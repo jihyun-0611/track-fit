@@ -143,7 +143,7 @@ def train(model, train_loader, val_loader, optimizer, device,
             val_losses.append(epoch+1)
             if avg_val < best_val_loss:
                 best_val_loss = avg_val
-                torch.save(model.state_dict(), os.path.join(save_path, f"Best model_{epoch}"))
+                torch.save(model.state_dict(), os.path.join(save_path, f"Best model_{epoch}.pth"))
                 print(f"Best model saved at epoch {epoch+1} with Val MPJPE: {best_val_loss:.4f}")
             print(f"[Epoch {epoch+1}] Train MPJPE: {avg_loss:.4f} | Val MPJPE: {avg_val:.4f}")
         else:
