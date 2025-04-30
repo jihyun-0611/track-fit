@@ -26,11 +26,10 @@
    - 사람별로 일정 프레임 수(N=30) 단위의 keypoints 시퀀스 구성 및 저장
 
 3. **DTW Score 평가**
-   - 표준 자세 시퀀스 (baseline)과 실시간 사용자 시퀀스를 DTW로 비교하여 유사도 % 계산
-   - 60% 이상일 경우 OK 판정, 이하는 개선 필요로 판단
+   - 표준 자세 시퀀스 (baseline)과 실시간 사용자 시퀀스를 DTW로 비교하여 유사도 계산
 
 4. **Webcam 데모**
-   - 웹캠 입력에서 실시간으로 skeleton 추출 → 시퀀스 구성 → 유사도 평가 → OK/NG 텍스트 출력
+   - 웹캠 입력에서 실시간으로 skeleton 추출 → 시퀀스 구성 → 유사도 평가
 
 
 ## 📈 향후 개선 계획
@@ -42,40 +41,21 @@
    - 주요 관절쌍 (ex. hip-knee-ankle) 기준 내각 변화를 분석
    - 기준 자세 대비 각도 편차를 수치화하여 더 세밀한 피드백 제공
 
-
-## 📂 프로젝트 디렉토리 구조
-
-```
-TRACK-FIT/
-├── external/
-│   └── lightweight-human-pose-estimation.pytorch/
-├── data/
-│   ├── keypoints/           # 추출된 2D keypoints 저장
-│   ├── sequences/           # 시퀀스 데이터 저장
-├── models/
-│   ├── tracking.py          # 프레임 간 skeleton ID tracking
-│   ├── evaluation.py        # DTW score 및 유사도 평가
-├── modules/
-│   ├── keypoints.py         # keypoints 추출 관련 모듈
-├── scripts/
-│   ├── extract_2d_keypoints.py
-│   ├── extract_sequence.py
-│   ├── visualize_2d_skeleton_from_json.py
-│   ├── estimate_z_using_pose3d.py
-├── weight/
-├── config.py
-├── README.md
-├── requirements.txt
-└── .gitignore
-```
-
+3. **시퀀스 분석 개선**
+    - LSTM, ST-GCN 등 학습 기반 시퀀스 분류 모델로 확장
 
 ## 🚀 실행 방법
 
 ```bash
 # 1. OpenPose lightweight 모델 설치 및 weight 다운로드
-# 2. 웹캠 연결 후 main 데모 스크립트 실행
-python scripts/demo.py
+# 2. https://www.kaggle.com/datasets/hasyimabdillah/workoutfitness-video 데이터셋 다운로드
+# 3. 데이터셋의 2d skeleton 추출
+python scripts/extract_2d_keypoints.py
+# 4. 베이스라인 시퀀스 추출
+python scripts/extract_sequence.py
+python scripts/create_baseline_sequence.py
+# 3. 웹캠 연결 후 main 데모 스크립트 실행
+python demo.py
 ```
 
 ---
