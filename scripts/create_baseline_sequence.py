@@ -35,6 +35,18 @@ def normalize_sequence(sequence, target_length=30):
     return resampled
 
 
+def create_mean_baseline(sequences, target_len=40):
+    aligned = [normalize_sequence(seq, target_len) for seq in sequences]
+    stacked = np.stack(aligned)  # (N, T, 18, 2)
+
+    mask = (stacked != -1)
+    masked_sum = np.where(mask, stacked, 0).sum(axis=0)  # (T, 18, 2)
+    count = mask.sum(axis=0) + 1e-5  # avoid division by zero
+
+    return masked_sum / count
+
+
+
 def dtw_distance(a, b):
     distance, _ = fastdtw(a.reshape(len(a), -1), b.reshape(len(b), -1))
     return distance
@@ -50,9 +62,9 @@ def select_best_baseline(sequences, target_length=30):
     return aligned[best_idx]
 
 
-def main():
+def main(type='mean'):
     sequences_dir = os.path.join(DATA_DIR, 'sequences')
-    output_dir = os.path.join(DATA_DIR, 'baseline')
+    output_dir = os.path.join(DATA_DIR, 'baseline_means')
     os.makedirs(output_dir, exist_ok=True)
     meta_csv = pd.read_csv(os.path.join(DATA_DIR, 'filter_meta.csv'))
     exercise_names = meta_csv['exercise'].unique().tolist()
@@ -62,7 +74,10 @@ def main():
         if not sequences:
             print(f"No sequences found for {exercise_name}.")
             continue
-        baseline_sequence = select_best_baseline(sequences)
+        if type == 'mean':
+            baseline_sequence = create_mean_baseline(sequences)
+        else:
+            baseline_sequence = select_best_baseline(sequences)
         np.savez_compressed(os.path.join(output_dir, f'baseline_{exercise_name}.npz'), keypoints=baseline_sequence)
         print(f"Finished processing {exercise_name}.")
 
