@@ -6,10 +6,8 @@ from tqdm import tqdm
 import torch
 
 import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from config import BASE_DIR, CHECKPOINT, DATA_DIR
-sys.path.append(os.path.join(BASE_DIR, 'external/lightweight-human-pose-estimation.pytorch'))
-from scripts.train_pose3d_baseline import LinearModel
+from scripts.train_pose3d import LinearModel
 
 
 H36M_USED_JOINTS = [

@@ -11,9 +11,7 @@ import json
 import os
 import sys
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from config import BASE_DIR, WEIGHT_PATH, DATA_DIR
-sys.path.append(os.path.join(BASE_DIR, 'external/lightweight-human-pose-estimation.pytorch'))
 
 from models.with_mobilenet import PoseEstimationWithMobileNet
 from modules.load_state import load_state

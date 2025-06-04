@@ -2,7 +2,7 @@ import json
 import numpy as np
 import os
 import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from config import DATA_DIR
 
 def extract_keypoints_sequences(json_path, num_keypoints=18):

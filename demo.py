@@ -13,8 +13,8 @@ from modules.load_state import load_state
 from modules.keypoints import extract_keypoints, group_keypoints
 from modules.pose import Pose, track_poses
 
-from utils.sequence_utils import normalize_score, load_all_baselines, compute_dtw_with_baseline
-from utils.pose_utils import normalize, pad_width, infer_frame
+from utils.sequences import normalize_score, load_all_baselines, compute_dtw_with_baseline
+from utils.poses import normalize, pad_width, infer_frame
 
 
 def main(baseline_dir, exercise_name, video_path=None, save_output=False):
