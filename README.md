@@ -1,5 +1,5 @@
 
-# 🏋️ TRACK-FIT: 2D Skeleton 시퀀스 기반 홈트레이닝 자세 평가 시스템
+# 🏋️ TRACK-FIT: Skeleton 시퀀스 기반 홈트레이닝 자세 평가 시스템
 
 ## 📋 프로젝트 개요
 
