@@ -8,7 +8,7 @@ from tqdm import tqdm
 import os
 import sys
 
-from model.Pose3D import LinearModel, Human36MDataset, mpjpe
+from models.Pose3D import LinearModel, Human36MDataset, mpjpe
 from config import DATA_DIR, CHECKPOINT
 
 
