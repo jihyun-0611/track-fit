@@ -3,5 +3,7 @@ __pycache__/
 weight/
 data/
 notebooks/
-checkpoint/
+checkpoints/
 .idea/
+mmpose/
+mmdetection/

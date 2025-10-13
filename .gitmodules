@@ -1,3 +1,3 @@
-[submodule "external/lightweight-human-pose-estimation.pytorch"]
-	path = external/lightweight-human-pose-estimation.pytorch
-	url = https://github.com/Daniil-Osokin/lightweight-human-pose-estimation.pytorch
+[submodule "/home/ahi0611/workspace/track-fit/external"]
+	path = /home/ahi0611/workspace/track-fit/external
+	url = https://github.com/firework8/ProtoGCN.git
