@@ -7,3 +7,5 @@ checkpoints/
 .idea/
 mmpose/
 mmdetection/
+.env
+work_dirs/

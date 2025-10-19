@@ -166,9 +166,9 @@ def main():
     
     video_path = os.path.join(DATA_DIR, "sample_videos", exercise_type, 
                              f"{video_name}.mp4")
-    json_path = os.path.join(DATA_DIR, "keypoints_mediapipe", "json", 
+    json_path = os.path.join(DATA_DIR, "keypoints_mediapipe_new", "json", 
                             exercise_type, f"{video_name}.json")
-    output_path = os.path.join(DATA_DIR, "visualizations", 
+    output_path = os.path.join(DATA_DIR, "visualizations_new", 
                               f"{video_name}_visualized.mp4")
     
     os.makedirs(os.path.dirname(output_path), exist_ok=True)

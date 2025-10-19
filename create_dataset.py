@@ -18,9 +18,9 @@ def load_keypoints_from_json(json_path):
     
     total_frames = len(data)
     num_person = 1
-    num_joints = 17
+    num_joints = 20
 
-    keypoint = np.zeros((num_person, total_frames, num_joints, 3), dtype=np.float32)
+    keypoint = np.zeros((num_person, total_frames, num_joints, 2), dtype=np.float32)
     keypoint_score = np.zeros((num_person, total_frames, num_joints), dtype=np.float32)
 
     for frame_data in data:
@@ -166,9 +166,9 @@ def verify_dataset(pkl_path):
 
 
 def main():
-    json_dir = os.path.join(DATA_DIR, "keypoints_mediapipe", "json")
+    json_dir = os.path.join(DATA_DIR, "keypoints_mediapipe_new", "json")
     csv_path = os.path.join(DATA_DIR, "filter_meta.csv")
-    output_path = os.path.join(DATA_DIR, "exercise_dataset.pkl")
+    output_path = os.path.join(DATA_DIR, "exercise_dataset_new.pkl")
 
     if not os.path.exists(json_dir):
         print(f"Error: {json_dir} 디렉토리를 찾을 수 없습니다.")

@@ -32,6 +32,10 @@ MEDIAPIPE_TO_COCO = {
     26: 14, # right_knee
     27: 15, # left_ankle
     28: 16, # right_ankle
+    # COCO_NEW
+    19: 17, # left_big_toe
+    20: 18, # left_small_toe
+    31: 19, # right_big_toe
 }
 
 
@@ -58,12 +62,12 @@ class VideoReader(object):
 
 def mediapipe_to_coco(mp_landmarks, img_width, img_height):
     """
-    MediaPipe 33 keypoints를 COCO 17 Keypoints로 변환
+    MediaPipe 33 keypoints를 COCO new Keypoints로 변환
     Returns:
-        np.array: shape (17, 3) - [x, y, confidence]
+        np.array: shape (20, 3) - [x, y, confidence]
     """
 
-    coco_kps = np.zeros((17, 3), dtype=np.float32)
+    coco_kps = np.zeros((20, 3), dtype=np.float32)
 
     for mp_idx, coco_idx in MEDIAPIPE_TO_COCO.items():
         landmark = mp_landmarks.landmark[mp_idx]
@@ -180,8 +184,8 @@ def main():
     print(f"총 {len(video_paths)}개의 비디오 데이터")
 
 
-    json_output_dir = os.path.join(DATA_DIR, "keypoints_mediapipe", "json")
-    pickle_output_dir = os.path.join(DATA_DIR, "keypoints_mediapipe", "pickle")
+    json_output_dir = os.path.join(DATA_DIR, "keypoints_mediapipe_new", "json")
+    pickle_output_dir = os.path.join(DATA_DIR, "keypoints_mediapipe_new", "pickle")
 
     os.makedirs(json_output_dir, exist_ok=True)
     os.makedirs(pickle_output_dir, exist_ok=True)
