@@ -17,7 +17,7 @@ custom_hooks = [
 
 
 total_epochs = 20
-work_dir = WORK_DIR + '/exercise/j_freeze'
+work_dir = WORK_DIR + '/exercise/j_freeze2'
 optimizer = dict(
     type='SGD',
     lr=0.01,

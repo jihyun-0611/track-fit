@@ -184,8 +184,8 @@ def main():
     print(f"총 {len(video_paths)}개의 비디오 데이터")
 
 
-    json_output_dir = os.path.join(DATA_DIR, "keypoints_mediapipe_new", "json")
-    pickle_output_dir = os.path.join(DATA_DIR, "keypoints_mediapipe_new", "pickle")
+    json_output_dir = os.path.join(DATA_DIR, "keypoints_mediapipe", "json")
+    pickle_output_dir = os.path.join(DATA_DIR, "keypoints_mediapipe", "pickle")
 
     os.makedirs(json_output_dir, exist_ok=True)
     os.makedirs(pickle_output_dir, exist_ok=True)
@@ -234,7 +234,7 @@ def main():
             elapsed_time = end_time - start_time
 
             total_frames = len(result)
-            frames_with_pose = sum(1 for frame in result if len(frame['pose'])>0)
+            frames_with_pose = sum(1 for frame in result if len(frame['poses'])>0)
             detection_rate = (frames_with_pose/total_frames*100) if total_frames > 0 else 0
 
             success_count += 1

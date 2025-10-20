@@ -28,8 +28,8 @@ if [ ! -f "${PROJECT_ROOT}/data/exercise_dataset.pkl" ]; then
     exit 1
 fi
 
-if [ ! -f "${PROJECT_ROOT}/checkpoints/ntu60_xsub_j/best_top1_acc_epoch_149.pth" ]; then
-    echo "Pretrained model not found!: ${PROJECT_ROOT}/checkpoints/ntu60_xsub_j/best_top1_acc_epoch_149.pth"
+if [ ! -f "${PROJECT_ROOT}/checkpoints/finegym_j/best_top1_acc_epoch_141.pth" ]; then
+    echo "Pretrained model not found!: ${PROJECT_ROOT}/checkpoints/finegym_j/best_top1_acc_epoch_141.pth"
     echo "Training from scratch..."
 fi
 

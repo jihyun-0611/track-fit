@@ -20,6 +20,6 @@ CHECKPOINT_DIR = str(_CHECKPOINT_DIR)
 WORK_DIR = str(_WORK_DIR)
 
 PROTOGCN_DIR = str(_BASE_DIR / 'external' / 'ProtoGCN')
-DATASET_PATH = str(_DATA_DIR / 'exercise_dataset_new.pkl')
+DATASET_PATH = str(_DATA_DIR / 'exercise_dataset.pkl')
 LABEL_MAPPING_PATH = str(_DATA_DIR / 'exercise_dataset_label_mapping.json')
 PRETRAINED = str(_CHECKPOINT_DIR / 'finegym_j' / 'best_top1_acc_epoch_141.pth')

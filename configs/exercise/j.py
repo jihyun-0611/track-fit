@@ -4,7 +4,7 @@ from config import DATASET_PATH, PRETRAINED, WORK_DIR
 
 modality = 'j'
 graph = 'coco_new'
-work_dir = WORK_DIR + '/exercise/j'
+work_dir = WORK_DIR + '/exercise/j_phase2_2'
 
 model = dict(
     type = 'RecognizerGCN',
@@ -67,7 +67,7 @@ data = dict(
 optimizer = dict(type='SGD', lr=0.001, momentum=0.9, weight_decay=0.001, nesterov=True)
 optimizer_config = dict(grad_clip=None)
 lr_config = dict(policy='CosineAnnealing', min_lr=0, by_epoch=False)
-total_epochs = 100
+total_epochs = 80
 
 checkpoint_config = dict(interval=5)
 evaluation = dict(
@@ -79,7 +79,7 @@ evaluation = dict(
 )
 log_config = dict(interval=10, hooks=[dict(type='TextLoggerHook')])
 
-load_from = PRETRAINED
+load_from = "/home/ahi0611/workspace/track-fit/work_dirs/exercise/j_freeze2/best_top1_acc_epoch_13.pth"
 
 resume_from = None
 auto_resume = True
