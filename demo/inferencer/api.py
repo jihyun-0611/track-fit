@@ -27,7 +27,7 @@ model = ProtoGCNInference(
 )
 
 class KeypointsRequest(BaseModel):
-    keypoints: List[List[float]]  # List of keypoints, each keypoint is [x, y, z, visibility]
+    keypoints: List[float]  # Flattened keypoints array
     reset: Optional[bool] = False
 
 class PredictionResponse(BaseModel):
@@ -37,12 +37,25 @@ class PredictionResponse(BaseModel):
 
 @app.post("/add_frame", response_model=PredictionResponse)
 async def add_frame(request: KeypointsRequest):
-    """프레임 추가 및 예측"""
+    """프레임 추가 및 실시간 예측"""
     if request.reset:
         model.reset_buffer()
     
-    keypoints = np.array(request.keypoints)
-    model.add_frame(keypoints)
+    # 키포인트 데이터를 2D 배열로 변환 (20, 3)
+    keypoints_flat = request.keypoints
+    
+    if len(keypoints_flat) == 60:  # 20 joints * 3 coordinates
+        keypoints_2d = np.array(keypoints_flat).reshape(20, 3)
+    else:
+        # 데이터 길이가 예상과 다르면 에러 반환
+        return {
+            "status": "error",
+            "buffer_count": len(model.buffer),
+            "prediction": None,
+            "error": f"Expected 60 keypoint values, got {len(keypoints_flat)}"
+        }
+    
+    model.add_frame(keypoints_2d)
 
     response = {
         "status": "buffering",
@@ -50,10 +63,18 @@ async def add_frame(request: KeypointsRequest):
         "prediction": None
     }
 
-    if len(model.buffer) == 100:
-        prediction = model.predict()
-        response["status"] = "predicted"
-        response["prediction"] = prediction
+    # 60프레임 이상이면 60프레임마다 슬라이딩 윈도우로 예측 수행
+    if len(model.buffer) >= 60 and len(model.buffer) % 60 == 0:  # 60프레임마다 예측 (안정적인 업데이트)
+        prediction = model.predict_sliding_window()
+        if prediction:
+            response["status"] = "predicted"
+            response["prediction"] = prediction
+    
+    # 300프레임 도달시 자동 리셋
+    if len(model.buffer) >= 300:
+        model.reset_buffer()
+        response["status"] = "auto_reset"
+        response["buffer_count"] = 0
 
     return response
 

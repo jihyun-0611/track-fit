@@ -12,11 +12,29 @@
         video { border: 2px solid #333; width: 100%; max-width: 640px; }
         #pose-canvas { position: absolute; top: 0; left: 0; pointer-events: none; border: 2px solid #333; }
         .status { padding: 15px; background: #2a2a2a; margin: 10px 0; border-radius: 8px; }
-        .joint-scores { max-height: 400px; overflow-y: auto; background: #2a2a2a; padding: 15px; border-radius: 8px; }
+        .joint-scores { max-height: 300px; overflow-y: auto; background: #2a2a2a; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
         .joint-item { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #444; }
         .joint-score { color: #4CAF50; font-weight: bold; }
         .joint-score.low { color: #f44336; }
         .joint-score.medium { color: #ff9800; }
+        .prediction-section { background: #2a2a2a; padding: 15px; border-radius: 8px; }
+        .exercise-name { font-size: 1.5em; font-weight: bold; color: #4CAF50; margin-bottom: 10px; }
+        .confidence { font-size: 1.2em; color: #ff9800; margin-bottom: 15px; }
+        .all-scores { font-size: 0.9em; }
+        .score-item { display: flex; justify-content: space-between; padding: 3px 0; }
+        .buffer-info { color: #888; font-size: 0.9em; margin-bottom: 10px; }
+        .control-section { background: #2a2a2a; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .control-row { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+        select { background: #333; color: white; border: 1px solid #555; padding: 8px; border-radius: 4px; }
+        button { background: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #45a049; }
+        button:disabled { background: #666; cursor: not-allowed; }
+        button.stop { background: #f44336; }
+        button.stop:hover { background: #da190b; }
+        .selected-exercise { font-weight: bold; color: #4CAF50; }
+        .comparison { margin-top: 10px; }
+        .correct { color: #4CAF50; }
+        .incorrect { color: #f44336; }
     </style>
 </head>
 <body>
@@ -30,9 +48,47 @@
         </div>
         
         <div class="info-section">
+            <div class="control-section">
+                <h3>운동 선택 및 제어</h3>
+                <div class="control-row">
+                    <label for="exercise-select">운동 종류:</label>
+                    <select id="exercise-select">
+                        <option value="barbell biceps curl">Barbell Biceps Curl</option>
+                        <option value="bench press">Bench Press</option>
+                        <option value="lat pulldown">Lat Pulldown</option>
+                        <option value="push-up">Push-up</option>
+                        <option value="tricep Pushdown">Tricep Pushdown</option>
+                    </select>
+                </div>
+                <div class="control-row">
+                    <button id="start-btn">시작</button>
+                    <button id="stop-btn" class="stop" disabled>정지</button>
+                    <button id="reset-btn">리셋</button>
+                </div>
+                <div class="selected-exercise">
+                    선택된 운동: <span id="current-exercise">Barbell Biceps Curl</span>
+                </div>
+            </div>
+            
             <div class="status">
                 <h3>상태</h3>
-                <p id="pose-status">포즈 감지 대기 중...</p>
+                <p id="pose-status">운동을 선택하고 시작을 눌러주세요.</p>
+            </div>
+            
+            <div class="prediction-section">
+                <h3>동작 인식</h3>
+                <div id="buffer-info" class="buffer-info">버퍼: <span id="buffer-count">0</span> 프레임 <span id="buffer-status">(예측 대기 중)</span></div>
+                <div id="prediction-result">
+                    <div id="selected-exercise-score" class="exercise-name" style="display: none;">
+                        <span id="selected-exercise-name">Barbell Biceps Curl</span> 신뢰도: <span id="selected-score-value">0.0</span>%
+                    </div>
+                    <div id="comparison" class="comparison" style="display: none;">
+                        <span id="comparison-result"></span>
+                    </div>
+                    <div id="waiting-message">
+                        <p>포즈가 감지되면 동작을 인식합니다.</p>
+                    </div>
+                </div>
             </div>
             
             <div class="joint-scores">
@@ -48,6 +104,10 @@
         const video = document.getElementById('video');
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
+        
+        let isRunning = false;
+        let selectedExercise = 'barbell biceps curl';
+        let frameInterval = null;
         
         navigator.mediaDevices.getUserMedia({video: true})
             .then(stream => video.srcObject = stream);
@@ -81,7 +141,7 @@
         const JOINT_NAMES = [
             '코', '왼쪽 눈', '오른쪽 눈', '왼쪽 귀', '오른쪽 귀',
             '왼쪽 어깨', '오른쪽 어깨', '왼쪽 팔꿈치', '오른쪽 팔꿈치', '왼쪽 손목',
-            '오른쪽 손목', '왼쪽 엉덩이', '오른쪽 엉덩이', '왼쪽 무릇', '오른쪽 무릇',
+            '오른쪽 손목', '왼쪽 엉덩이', '오른쪽 엉덩이', '왼쪽 무릎', '오른쪽 무릎',
             '왼쪽 발목', '오른쪽 발목', '왼쪽 엄지발가락', '왼쪽 새끼발가락', '오른쪽 엄지발가락'
         ];
         
@@ -151,6 +211,77 @@
             jointList.innerHTML = html;
         }
         
+        function updatePrediction(data) {
+            // 버퍼 정보 업데이트 (숫자만 변경)
+            const bufferCount = data.buffer_count || 0;
+            const bufferCountEl = document.getElementById('buffer-count');
+            const bufferStatusEl = document.getElementById('buffer-status');
+            
+            if (bufferCountEl) bufferCountEl.textContent = bufferCount;
+            
+            if (bufferStatusEl) {
+                if (bufferCount < 60) {
+                    bufferStatusEl.textContent = '(예측 대기 중)';
+                } else {
+                    bufferStatusEl.textContent = '(실시간 인식 중)';
+                }
+            }
+            
+            // 선택된 운동 업데이트
+            const currentExerciseEl = document.getElementById('current-exercise');
+            if (currentExerciseEl) currentExerciseEl.textContent = selectedExercise;
+            
+            // 예측 결과 업데이트
+            if (data.prediction) {
+                const pred = data.prediction;
+                
+                // DOM 요소 참조 가져오기 (안전 처리)
+                const selectedExerciseScoreEl = document.getElementById('selected-exercise-score');
+                const selectedExerciseNameEl = document.getElementById('selected-exercise-name');
+                const selectedScoreValueEl = document.getElementById('selected-score-value');
+                const waitingMessageEl = document.getElementById('waiting-message');
+                const comparisonEl = document.getElementById('comparison');
+                const comparisonResultEl = document.getElementById('comparison-result');
+                
+                // 선택된 운동의 점수 표시
+                if (selectedExerciseScoreEl) selectedExerciseScoreEl.style.display = 'block';
+                if (selectedExerciseNameEl) selectedExerciseNameEl.textContent = selectedExercise;
+                if (selectedScoreValueEl) {
+                    const selectedScore = pred.all_scores[selectedExercise] || 0;
+                    selectedScoreValueEl.textContent = (selectedScore * 100).toFixed(1);
+                }
+                if (comparisonEl) comparisonEl.style.display = 'block';
+                if (waitingMessageEl) waitingMessageEl.style.display = 'none';
+                
+                // 선택된 운동과 예측된 운동 비교
+                if (comparisonResultEl) {
+                    const isCorrect = pred.class === selectedExercise;
+                    if (isCorrect) {
+                        comparisonResultEl.innerHTML = '<span class="correct">✓ 올바른 동작입니다!</span>';
+                    } else {
+                        comparisonResultEl.innerHTML = '';
+                    }
+                }
+                
+            } else {
+                // 예측 결과가 없을 때만 메시지 표시 (30프레임 미만 또는 신뢰도 낮음)
+                const selectedExerciseScoreEl = document.getElementById('selected-exercise-score');
+                const waitingMessageEl = document.getElementById('waiting-message');
+                
+                if (selectedExerciseScoreEl && selectedExerciseScoreEl.style.display === 'none') {
+                    // 아직 예측 결과가 없는 경우에만 메시지 표시
+                    if (waitingMessageEl) {
+                        if (bufferCount >= 60) {
+                            waitingMessageEl.innerHTML = '<p>동작 분석 중... (신뢰도가 낮아 대기 중)</p>';
+                        } else {
+                            waitingMessageEl.innerHTML = '<p>동작 인식을 위해 60프레임 이상 필요</p>';
+                        }
+                        waitingMessageEl.style.display = 'block';
+                    }
+                }
+            }
+        }
+        
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
             
@@ -160,10 +291,27 @@
                 statusElement.textContent = '포즈 감지됨 - 실시간 분석 중';
                 drawPose(data.keypoints);
                 updateJointScores(data.joint_scores);
+                updatePrediction(data);
             } else if (data.status === 'no_pose') {
                 statusElement.textContent = '포즈를 찾을 수 없음';
                 poseCtx.clearRect(0, 0, poseCanvas.width, poseCanvas.height);
                 updateJointScores([]);
+                // 포즈가 감지되지 않을 때는 예측 결과를 초기화하지 않음
+                // updatePrediction({ buffer_count: 0 });
+            } else if (data.status === 'auto_reset') {
+                statusElement.textContent = '300프레임 도달 - 자동 리셋됨';
+                // UI 자동 리셋
+                const selectedExerciseScoreEl = document.getElementById('selected-exercise-score');
+                const comparisonEl = document.getElementById('comparison');
+                const waitingMessageEl = document.getElementById('waiting-message');
+                
+                if (selectedExerciseScoreEl) selectedExerciseScoreEl.style.display = 'none';
+                if (comparisonEl) comparisonEl.style.display = 'none';
+                if (waitingMessageEl) {
+                    waitingMessageEl.innerHTML = '<p>60프레임 이상 필요 (자동 리셋됨)</p>';
+                    waitingMessageEl.style.display = 'block';
+                }
+                updatePrediction(data);
             }
         };
         
@@ -193,21 +341,96 @@
         video.addEventListener('loadedmetadata', updateCanvasSize);
         window.addEventListener('resize', updateCanvasSize);
         
-        setInterval(() => {
-            if (video.videoWidth > 0) {
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                ctx.drawImage(video, 0, 0);
-                
-                updateCanvasSize();
-                
-                canvas.toBlob(blob => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => ws.send(reader.result);
-                    reader.readAsDataURL(blob);
-                }, 'image/jpeg');
+        // 컴트롤 버튼 이벤트 핸들러
+        document.getElementById('exercise-select').addEventListener('change', (e) => {
+            selectedExercise = e.target.value;
+            document.getElementById('current-exercise').textContent = selectedExercise;
+        });
+        
+        document.getElementById('start-btn').addEventListener('click', () => {
+            if (!isRunning) {
+                startRecording();
             }
-        }, 100);
+        });
+        
+        document.getElementById('stop-btn').addEventListener('click', () => {
+            if (isRunning) {
+                stopRecording();
+            }
+        });
+        
+        document.getElementById('reset-btn').addEventListener('click', () => {
+            resetSession();
+        });
+        
+        function startRecording() {
+            isRunning = true;
+            document.getElementById('start-btn').disabled = true;
+            document.getElementById('stop-btn').disabled = false;
+            document.getElementById('exercise-select').disabled = true;
+            document.getElementById('pose-status').textContent = '녹화 시작 - 포즈를 취해주세요';
+            
+            // 프레임 전송 시작
+            frameInterval = setInterval(() => {
+                if (video.videoWidth > 0 && isRunning) {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    ctx.drawImage(video, 0, 0);
+                    
+                    updateCanvasSize();
+                    
+                    canvas.toBlob(blob => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                            if (isRunning) {
+                                ws.send(reader.result);
+                            }
+                        };
+                        reader.readAsDataURL(blob);
+                    }, 'image/jpeg');
+                }
+            }, 100);
+        }
+        
+        function stopRecording() {
+            isRunning = false;
+            document.getElementById('start-btn').disabled = false;
+            document.getElementById('stop-btn').disabled = true;
+            document.getElementById('exercise-select').disabled = false;
+            document.getElementById('pose-status').textContent = '녹화 중지됨';
+            
+            // 프레임 전송 중지
+            if (frameInterval) {
+                clearInterval(frameInterval);
+                frameInterval = null;
+            }
+        }
+        
+        function resetSession() {
+            stopRecording();
+            // 버퍼 리셋 요청
+            fetch('http://localhost:8002/reset');
+            
+            // UI 리셋
+            document.getElementById('pose-status').textContent = '리셋 완료 - 운동을 선택하고 시작을 눌러주세요';
+            
+            const selectedExerciseScoreEl = document.getElementById('selected-exercise-score');
+            const comparisonEl = document.getElementById('comparison');
+            const waitingMessageEl = document.getElementById('waiting-message');
+            
+            if (selectedExerciseScoreEl) selectedExerciseScoreEl.style.display = 'none';
+            if (comparisonEl) comparisonEl.style.display = 'none';
+            if (waitingMessageEl) {
+                waitingMessageEl.innerHTML = '<p>준비되면 시작 버튼을 눌러주세요.</p>';
+                waitingMessageEl.style.display = 'block';
+            }
+            
+            // 버퍼 카운트 리셋
+            const bufferCountEl = document.getElementById('buffer-count');
+            const bufferStatusEl = document.getElementById('buffer-status');
+            if (bufferCountEl) bufferCountEl.textContent = '0';
+            if (bufferStatusEl) bufferStatusEl.textContent = '(예측 대기 중)';
+        }
     </script>
 </body>
 </html>

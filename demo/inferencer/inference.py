@@ -9,7 +9,7 @@ class ProtoGCNInference:
         self.config_path = config_path
         self.checkpoint_path = checkpoint_path
         self.device = device if torch.cuda.is_available() else 'cpu'
-        self.buffer = deque(maxlen=100)  # 최대 100 프레임 버퍼
+        self.buffer = deque(maxlen=300)  # 최대 300 프레임 버퍼 (더 긴 시퀀스 저장)
         self.label_map={
             0: "barbell biceps curl",
             1: "bench press",
@@ -50,6 +50,48 @@ class ProtoGCNInference:
             scores = torch.softmax(torch.FloatTensor(output[0]), dim=0)
             pred_idx = scores.argmax().item()
             confidence = scores[pred_idx].item()
+
+        return {
+            "class": self.label_map[pred_idx],
+            "confidence": float(confidence),
+            "all_scores": {
+                self.label_map[i]: float(scores[i])
+                for i in range(len(self.label_map))
+            }
+        }
+    
+    def predict_sliding_window(self):
+        """슬라이딩 윈도우 방식으로 예측 수행"""
+        if len(self.buffer) < 60:
+            return None
+        
+        # 최근 100프레임 사용 (부족한 경우 반복 패딩)
+        recent_frames = list(self.buffer)
+        if len(recent_frames) < 100:
+            # 패딩: 전체 시퀀스를 반복하여 100프레임으로 만들기
+            repeat_count = (100 // len(recent_frames)) + 1
+            padded_frames = (recent_frames * repeat_count)[:100]
+        else:
+            # 최근 100프레임 사용
+            padded_frames = recent_frames[-100:]
+        
+        # (T, V, C) -> (1, 1, T, V, C)
+        keypoints = np.array(padded_frames)  # (100, 20, 3)
+        keypoints = keypoints[np.newaxis, :, :, :]
+        keypoints = keypoints.transpose(1, 0, 2, 3)
+        keypoints = keypoints[np.newaxis, np.newaxis, :, :, :, :]  # (1, 1, 100, 20, 3)
+
+        with torch.no_grad():
+            keypoint_tensor = torch.FloatTensor(keypoints).to(self.device)
+            output = self.model(keypoint_tensor, return_loss=False)
+
+            scores = torch.softmax(torch.FloatTensor(output[0]), dim=0)
+            pred_idx = scores.argmax().item()
+            confidence = scores[pred_idx].item()
+
+        # 신뢰도가 낮으면 결과 반환하지 않음
+        if confidence < 0.1:  # 임계값을 0.1로 낮춤
+            return None
 
         return {
             "class": self.label_map[pred_idx],
