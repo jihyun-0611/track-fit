@@ -27,13 +27,14 @@ MEDIAPIPE_TO_COCO = {
 
 def mediapipe_to_coco(mp_landmarks, width, height):
     """MediaPipe format에서 COCO format으로 변환"""
-    keypoints = np.zeros((20, 2), dtype=np.float32)
+    keypoints = np.zeros((20, 3), dtype=np.float32)
 
     for mp_idx, coco_idx in MEDIAPIPE_TO_COCO.items():
         landmark = mp_landmarks.landmark[mp_idx]
         keypoints[coco_idx] = [
             landmark.x * width,
-            landmark.y * height
+            landmark.y * height,
+            landmark.visibility
         ]
 
     return keypoints

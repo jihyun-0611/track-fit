@@ -18,7 +18,7 @@ cd ../inferencer
 python api.py &
 PID2=$!
 
-sleep 3
+sleep 5
 
 
 echo "Starting Web Application"

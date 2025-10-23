@@ -1,5 +1,3 @@
-from config import PROTOGCN_DIR
-
 import torch
 import numpy as np
 from collections import deque
@@ -40,8 +38,10 @@ class ProtoGCNInference:
             return None
         
         # (T, V, C) -> (1, 1, T, V, C)
-        keypoints = np.array(self.buffer)
-        keypoints = keypoints[np.newaxis, np.newaxis, :, :, :]
+        keypoints = np.array(self.buffer)  # (T, V, C)
+        keypoints = keypoints[np.newaxis, :, :, :]
+        keypoints = keypoints.transpose(1, 0, 2, 3)
+        keypoints = keypoints[np.newaxis, np.newaxis, :, :, :, :]  # (1, 1, T, V, C)
 
         with torch.no_grad():
             keypoint_tensor = torch.FloatTensor(keypoints).to(self.device)

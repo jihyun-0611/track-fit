@@ -5,7 +5,12 @@ from typing import List, Optional
 import numpy as np
 from inference import ProtoGCNInference
 
-from config import WORK_DIR, BASE_DIR
+import sys
+import os
+
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.join(PROJECT_ROOT, 'external/ProtoGCN'))
+sys.path.append(PROJECT_ROOT)
 
 
 app = FastAPI(title="ProtoGCN Inference API")
@@ -17,8 +22,8 @@ app.add_middleware(
 )
 
 model = ProtoGCNInference(
-    config_path=BASE_DIR+"configs/exercise/j.py",
-    checkpoint_path=WORK_DIR+"exercise/j_phase2_2/best_top1_acc_epoch_15.pth"
+    config_path=os.path.join(PROJECT_ROOT, 'configs/exercise/j.py'),
+    checkpoint_path=os.path.join(PROJECT_ROOT, 'work_dirs/exercise/j_phase2_2/best_top1_acc_epoch_15.pth')
 )
 
 class KeypointsRequest(BaseModel):

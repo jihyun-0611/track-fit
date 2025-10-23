@@ -6,6 +6,7 @@ import json
 import base64
 import numpy as np
 import cv2
+import asyncio
 
 
 app = FastAPI(title="TrackFit Demo")
@@ -30,10 +31,9 @@ async def websocket_endpoint(websocket: WebSocket):
                 data = await websocket.receive_text()
                 img_data = base64.b64decode(data.split(",")[1])
 
-                files = {'image': ('frame.jpg', img_data, 'image/jpeg')}
                 mp_response = await client.post(
                     f"{MEDIAPIPE_URL}/extract_keypoints",
-                    files=files
+                    files={'file': ('frame.jpg', img_data, 'image/jpeg')}
                 )
                 mp_results = mp_response.json()
 
