@@ -4,31 +4,42 @@
 <head>
     <title>ProtoGCN 운동 인식 데모</title>
     <style>
-        body { font-family: Arial; padding: 20px; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        video { border: 2px solid #333; }
-        .status { padding: 15px; background: #f0f0f0; margin: 10px 0; }
-        .progress { width: 100%; height: 30px; background: #ddd; }
-        .progress-bar { height: 100%; background: #4CAF50; transition: width 0.3s; }
+        body { font-family: Arial; padding: 20px; background: #1a1a1a; color: white; }
+        .container { max-width: 1400px; margin: 0 auto; display: flex; gap: 20px; }
+        .video-section { flex: 1; }
+        .info-section { flex: 1; max-width: 400px; }
+        #video-container { position: relative; }
+        video { border: 2px solid #333; width: 100%; max-width: 640px; }
+        #pose-canvas { position: absolute; top: 0; left: 0; pointer-events: none; border: 2px solid #333; }
+        .status { padding: 15px; background: #2a2a2a; margin: 10px 0; border-radius: 8px; }
+        .joint-scores { max-height: 400px; overflow-y: auto; background: #2a2a2a; padding: 15px; border-radius: 8px; }
+        .joint-item { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #444; }
+        .joint-score { color: #4CAF50; font-weight: bold; }
+        .joint-score.low { color: #f44336; }
+        .joint-score.medium { color: #ff9800; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>운동 자세 인식 데모 (ProtoGCN)</h1>
+        <div class="video-section">
+            <h1>실시간 포즈 인식 데모</h1>
+            <div id="video-container">
+                <video id="video" width="640" height="480" autoplay></video>
+                <canvas id="pose-canvas" width="640" height="480"></canvas>
+            </div>
+        </div>
         
-        <video id="video" width="640" height="480" autoplay></video>
-        
-        <div class="status">
-            <h3>상태</h3>
-            <p>프레임: <span id="frame-count">0</span>/100</p>
-            <div class="progress">
-                <div class="progress-bar" id="progress" style="width: 0%"></div>
+        <div class="info-section">
+            <div class="status">
+                <h3>상태</h3>
+                <p id="pose-status">포즈 감지 대기 중...</p>
             </div>
             
-            <div id="result" style="margin-top: 20px; display: none;">
-                <h3>인식 결과</h3>
-                <p>동작: <span id="action"></span></p>
-                <p>신뢰도: <span id="confidence"></span></p>
+            <div class="joint-scores">
+                <h3>관절 스코어</h3>
+                <div id="joint-list">
+                    <p>포즈가 감지되면 관절 스코어가 표시됩니다.</p>
+                </div>
             </div>
         </div>
     </div>
@@ -43,30 +54,159 @@
         
         const ws = new WebSocket('ws://localhost:8000/ws');
         
+        const poseCanvas = document.getElementById('pose-canvas');
+        const poseCtx = poseCanvas.getContext('2d');
+        
+        // COCO 포즈 연결 정의 (20개 관절)
+        const POSE_CONNECTIONS = [
+            [5, 6],   // left_shoulder - right_shoulder
+            [5, 7],   // left_shoulder - left_elbow
+            [7, 9],   // left_elbow - left_wrist
+            [6, 8],   // right_shoulder - right_elbow
+            [8, 10],  // right_elbow - right_wrist
+            [5, 11],  // left_shoulder - left_hip
+            [6, 12],  // right_shoulder - right_hip
+            [11, 12], // left_hip - right_hip
+            [11, 13], // left_hip - left_knee
+            [13, 15], // left_knee - left_ankle
+            [12, 14], // right_hip - right_knee
+            [14, 16], // right_knee - right_ankle
+            [0, 1],   // nose - left_eye
+            [0, 2],   // nose - right_eye
+            [1, 3],   // left_eye - left_ear
+            [2, 4]    // right_eye - right_ear
+        ];
+        
+        // COCO 관절 이름 매핑 (20개)
+        const JOINT_NAMES = [
+            '코', '왼쪽 눈', '오른쪽 눈', '왼쪽 귀', '오른쪽 귀',
+            '왼쪽 어깨', '오른쪽 어깨', '왼쪽 팔꿈치', '오른쪽 팔꿈치', '왼쪽 손목',
+            '오른쪽 손목', '왼쪽 엉덩이', '오른쪽 엉덩이', '왼쪽 무릇', '오른쪽 무릇',
+            '왼쪽 발목', '오른쪽 발목', '왼쪽 엄지발가락', '왼쪽 새끼발가락', '오른쪽 엄지발가락'
+        ];
+        
+        function drawPose(keypoints) {
+            poseCtx.clearRect(0, 0, poseCanvas.width, poseCanvas.height);
+            
+            if (!keypoints || keypoints.length === 0) return;
+            
+            // COCO 포맷 키포인트 처리 [[x, y, visibility], ...]
+            // 정규화된 좌표(0-1)를 캔버스 크기에 맞게 변환
+            const points = keypoints.map(joint => {
+                if (joint.length >= 3) {
+                    return {
+                        x: joint[0] * poseCanvas.width,   // 정규화된 좌표를 픽셀로 변환
+                        y: joint[1] * poseCanvas.height,  // 정규화된 좌표를 픽셀로 변환
+                        visibility: joint[2]
+                    };
+                }
+                return { x: 0, y: 0, visibility: 0 };
+            });
+            
+            // 연결선 그리기
+            poseCtx.strokeStyle = '#00ff00';
+            poseCtx.lineWidth = 2;
+            POSE_CONNECTIONS.forEach(([start, end]) => {
+                if (points[start] && points[end] && 
+                    points[start].visibility > 0.5 && points[end].visibility > 0.5) {
+                    poseCtx.beginPath();
+                    poseCtx.moveTo(points[start].x, points[start].y);
+                    poseCtx.lineTo(points[end].x, points[end].y);
+                    poseCtx.stroke();
+                }
+            });
+            
+            // 관절 점 그리기
+            points.forEach((point, index) => {
+                if (point.visibility > 0.5) {
+                    poseCtx.fillStyle = point.visibility > 0.8 ? '#00ff00' : '#ffff00';
+                    poseCtx.beginPath();
+                    poseCtx.arc(point.x, point.y, 4, 0, 2 * Math.PI);
+                    poseCtx.fill();
+                }
+            });
+        }
+        
+        function updateJointScores(jointScores) {
+            const jointList = document.getElementById('joint-list');
+            if (!jointScores || jointScores.length === 0) {
+                jointList.innerHTML = '<p>포즈가 감지되지 않음</p>';
+                return;
+            }
+            
+            let html = '';
+            jointScores.forEach(joint => {
+                const score = (joint.score * 100).toFixed(1);
+                const scoreClass = joint.score > 0.8 ? 'high' : 
+                                 joint.score > 0.5 ? 'medium' : 'low';
+                const jointName = JOINT_NAMES[joint.joint_id] || `관절 ${joint.joint_id}`;
+                
+                html += `
+                    <div class="joint-item">
+                        <span>${jointName}</span>
+                        <span class="joint-score ${scoreClass}">${score}%</span>
+                    </div>
+                `;
+            });
+            jointList.innerHTML = html;
+        }
+        
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
             
-            document.getElementById('frame-count').innerText = data.frame_count;
-            document.getElementById('progress').style.width = data.frame_count + '%';
+            const statusElement = document.getElementById('pose-status');
             
-            if (data.status === 'predicted' && data.prediction) {
-                document.getElementById('result').style.display = 'block';
-                document.getElementById('action').innerText = data.prediction.class;
-                document.getElementById('confidence').innerText = 
-                    (data.prediction.confidence * 100).toFixed(1) + '%';
+            if (data.status === 'pose_detected') {
+                statusElement.textContent = '포즈 감지됨 - 실시간 분석 중';
+                drawPose(data.keypoints);
+                updateJointScores(data.joint_scores);
+            } else if (data.status === 'no_pose') {
+                statusElement.textContent = '포즈를 찾을 수 없음';
+                poseCtx.clearRect(0, 0, poseCanvas.width, poseCanvas.height);
+                updateJointScores([]);
             }
         };
         
+        function updateCanvasSize() {
+            if (video.videoWidth > 0 && video.videoHeight > 0) {
+                // 비디오와 캔버스 크기를 정확히 동기화
+                const videoRect = video.getBoundingClientRect();
+                
+                poseCanvas.width = video.videoWidth;
+                poseCanvas.height = video.videoHeight;
+                
+                // CSS 스타일도 비디오와 동일하게 설정
+                poseCanvas.style.width = videoRect.width + 'px';
+                poseCanvas.style.height = videoRect.height + 'px';
+                
+                console.log('Canvas updated:', {
+                    canvasWidth: poseCanvas.width,
+                    canvasHeight: poseCanvas.height,
+                    videoWidth: video.videoWidth,
+                    videoHeight: video.videoHeight,
+                    displayWidth: videoRect.width,
+                    displayHeight: videoRect.height
+                });
+            }
+        }
+        
+        video.addEventListener('loadedmetadata', updateCanvasSize);
+        window.addEventListener('resize', updateCanvasSize);
+        
         setInterval(() => {
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            ctx.drawImage(video, 0, 0);
-            
-            canvas.toBlob(blob => {
-                const reader = new FileReader();
-                reader.onloadend = () => ws.send(reader.result);
-                reader.readAsDataURL(blob);
-            }, 'image/jpeg');
+            if (video.videoWidth > 0) {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                ctx.drawImage(video, 0, 0);
+                
+                updateCanvasSize();
+                
+                canvas.toBlob(blob => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => ws.send(reader.result);
+                    reader.readAsDataURL(blob);
+                }, 'image/jpeg');
+            }
         }, 100);
     </script>
 </body>

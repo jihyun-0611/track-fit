@@ -13,7 +13,6 @@ app = FastAPI(title="TrackFit Demo")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 MEDIAPIPE_URL = "http://localhost:8001"
-PROTOGCN_URL = "http://localhost:8002"
 
 @app.get("/")
 async def home():
@@ -23,7 +22,6 @@ async def home():
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    frame_count = 0
 
     async with httpx.AsyncClient() as client:
         try:
@@ -38,26 +36,32 @@ async def websocket_endpoint(websocket: WebSocket):
                 mp_results = mp_response.json()
 
                 if mp_results["success"]:
-                    gcn_response = await client.post(
-                        f"{PROTOGCN_URL}/add_frame",
-                        json={"keypoints": mp_results["keypoints"]}
-                    )
-                    gcn_results = gcn_response.json()
-
-                    frame_count = gcn_results["buffer_count"]
+                    keypoints = mp_results["keypoints"]  # COCO format: [[x, y, visibility], ...]
+                    
+                    # 각 관절의 스코어 계산 (COCO 포맷 기준)
+                    joint_scores = []
+                    for i, joint in enumerate(keypoints):
+                        if len(joint) >= 3:
+                            x, y, visibility = joint[0], joint[1], joint[2]
+                            joint_scores.append({
+                                "joint_id": i,
+                                "position": [x, y, 0],  # z는 0으로 설정
+                                "score": visibility
+                            })
 
                     await websocket.send_text(json.dumps({
-                        "frame_count": frame_count,
-                        "status": gcn_results["status"],
-                        "prediction": gcn_results.get("prediction")
+                        "status": "pose_detected",
+                        "keypoints": keypoints,
+                        "joint_scores": joint_scores
                     }))
                 else:
                     await websocket.send_text(json.dumps({
-                        "frame_count": frame_count,
-                        "status": "no_pose"
+                        "status": "no_pose",
+                        "keypoints": [],
+                        "joint_scores": []
                     }))
         except WebSocketDisconnect:
-            await client.get(f"{PROTOGCN_URL}/reset")
+            pass
 
 
 if __name__ == "__main__":
