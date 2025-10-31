@@ -23,11 +23,23 @@ async def home():
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
+    selected_exercise = None  # Track currently selected exercise
 
     async with httpx.AsyncClient() as client:
         try:
             while True:
                 data = await websocket.receive_text()
+
+                # Check if message is JSON (exercise selection) or base64 image
+                try:
+                    message = json.loads(data)
+                    if message.get("type") == "exercise_selection":
+                        selected_exercise = message.get("exercise")
+                        continue
+                except json.JSONDecodeError:
+                    # Not JSON, treat as base64 image data
+                    pass
+
                 img_data = base64.b64decode(data.split(",")[1])
 
                 mp_response = await client.post(
@@ -47,10 +59,14 @@ async def websocket_endpoint(websocket: WebSocket):
                         else:
                             flattened_keypoints.extend([0.0, 0.0, 0.0])  # 기본값
                     
-                    # ProtoGCN에 프레임 추가 및 예측 요청
+                    # ProtoGCN에 프레임 추가 및 예측 요청 (선택한 운동 종류 포함)
+                    gcn_request_data = {"keypoints": flattened_keypoints}
+                    if selected_exercise:
+                        gcn_request_data["selected_exercise"] = selected_exercise
+
                     gcn_response = await client.post(
                         f"{PROTOGCN_URL}/add_frame",
-                        json={"keypoints": flattened_keypoints}
+                        json=gcn_request_data
                     )
                     gcn_results = gcn_response.json()
                     

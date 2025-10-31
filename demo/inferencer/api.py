@@ -7,10 +7,14 @@ from inference import ProtoGCNInference
 
 import sys
 import os
+from dotenv import load_dotenv
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(os.path.join(PROJECT_ROOT, 'external/ProtoGCN'))
 sys.path.append(PROJECT_ROOT)
+
+# Load environment variables from .env file
+load_dotenv(os.path.join(PROJECT_ROOT, '.env'))
 
 
 app = FastAPI(title="ProtoGCN Inference API")
@@ -23,12 +27,13 @@ app.add_middleware(
 
 model = ProtoGCNInference(
     config_path=os.path.join(PROJECT_ROOT, 'configs/exercise/j.py'),
-    checkpoint_path=os.path.join(PROJECT_ROOT, 'work_dirs/exercise/j_phase2_2/best_top1_acc_epoch_15.pth')
+    checkpoint_path=os.path.join(PROJECT_ROOT, 'work_dirs/exercise/j_phase2/best_top1_acc_epoch_15.pth')
 )
 
 class KeypointsRequest(BaseModel):
     keypoints: List[float]  # Flattened keypoints array
     reset: Optional[bool] = False
+    selected_exercise: Optional[str] = None  # User selected exercise for quality assessment
 
 class PredictionResponse(BaseModel):
     status: str
@@ -65,7 +70,7 @@ async def add_frame(request: KeypointsRequest):
 
     # 60프레임 이상이면 60프레임마다 슬라이딩 윈도우로 예측 수행
     if len(model.buffer) >= 60 and len(model.buffer) % 60 == 0:  # 60프레임마다 예측 (안정적인 업데이트)
-        prediction = model.predict_sliding_window()
+        prediction = model.predict_sliding_window(selected_exercise=request.selected_exercise)
         if prediction:
             response["status"] = "predicted"
             response["prediction"] = prediction
