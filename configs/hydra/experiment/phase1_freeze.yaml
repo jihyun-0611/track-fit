@@ -1,0 +1,25 @@
+# @package _global_
+
+# Phase 1: Head-only training with frozen backbone
+# Usage: python train_hydra.py experiment=phase1_freeze
+
+# Use freeze config
+mmcv_config: configs/exercise/j_freeze.py
+
+# Override training parameters
+training:
+  epochs: 20
+  optimizer:
+    type: SGD
+    lr: 0.01  # Higher learning rate for head-only training
+    momentum: 0.9
+    weight_decay: 0.001
+    nesterov: true
+
+# Custom work directory - Use Hydra's timestamped output directory
+experiment:
+  name: phase1_freeze
+  work_dir: ${hydra:run.dir}
+
+# Pretrained model (from FineGYM)
+pretrained: ${project.checkpoint_dir}/finegym_j/best_top1_acc_epoch_141.pth

@@ -1,0 +1,27 @@
+# @package _global_
+
+# Phase 2: Full fine-tuning
+# Usage: python train_hydra.py experiment=phase2_finetune
+
+# Use main config (full training)
+mmcv_config: configs/exercise/j.py
+
+# Override training parameters
+training:
+  epochs: 80
+  optimizer:
+    type: SGD
+    lr: 0.001  # Lower learning rate for full fine-tuning
+    momentum: 0.9
+    weight_decay: 0.001
+    nesterov: true
+
+# Custom work directory - Use Hydra's timestamped output directory
+experiment:
+  name: phase2_finetune
+  work_dir: ${hydra:run.dir}
+
+# Pretrained model (from Phase 1)
+# Override this with your Phase 1 best checkpoint:
+# python train_hydra.py experiment=phase2_finetune pretrained=/path/to/phase1/best.pth
+pretrained: ${oc.env:PRETRAINED}

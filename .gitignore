@@ -9,3 +9,10 @@ mmpose/
 mmdetection/
 .env
 work_dirs/
+
+# Hydra outputs
+outputs/
+.hydra/
+multirun/
+hydra_runs/
+hydra_multirun/

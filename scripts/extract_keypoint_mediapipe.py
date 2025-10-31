@@ -6,8 +6,9 @@ import mediapipe as mp
 from tqdm import tqdm
 import json
 import os
+import argparse
 import pickle
-from config import DATA_DIR
+from pathlib import Path
 
 
 mp_pose = mp.solutions.pose
@@ -164,12 +165,45 @@ def save_to_pickle(data, output_path):
 
 
 def main():
-    csv_path = os.path.join(DATA_DIR, "filter_meta.csv")
+    # Load .env file
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except ImportError:
+        pass
 
-    if not os.path.exists(csv_path):
+    parser = argparse.ArgumentParser(description='Extract keypoints from exercise videos using MediaPipe')
+    parser.add_argument(
+        '--data-dir',
+        type=str,
+        default=os.environ.get('DATA_DIR'),
+        help='Data directory path (default: $DATA_DIR from .env)'
+    )
+    parser.add_argument(
+        '--min-detection-confidence',
+        type=float,
+        default=0.5,
+        help='Minimum detection confidence for MediaPipe (default: 0.5)'
+    )
+    parser.add_argument(
+        '--min-tracking-confidence',
+        type=float,
+        default=0.5,
+        help='Minimum tracking confidence for MediaPipe (default: 0.5)'
+    )
+    args = parser.parse_args()
+
+    if not args.data_dir:
+        print("Error: DATA_DIR not set. Please set DATA_DIR in .env file or use --data-dir argument.")
+        return
+
+    data_dir = Path(args.data_dir)
+    csv_path = data_dir / "filter_meta.csv"
+
+    if not csv_path.exists():
         print(f"Error: {csv_path} 파일을 찾을 수 없습니다.")
         return
-    
+
     df = pd.read_csv(csv_path)
 
     video_paths = []
@@ -177,21 +211,22 @@ def main():
         path = os.path.join('sample_videos', row['exercise'], row['file_name'])
         video_paths.append({
             'path':path,
-            'exercise': row['exercise'], 
+            'exercise': row['exercise'],
             'filename': row['file_name']
         })
 
+    print(f"Data directory: {data_dir}")
     print(f"총 {len(video_paths)}개의 비디오 데이터")
 
 
-    json_output_dir = os.path.join(DATA_DIR, "keypoints_mediapipe", "json")
-    pickle_output_dir = os.path.join(DATA_DIR, "keypoints_mediapipe", "pickle")
+    json_output_dir = data_dir / "keypoints_mediapipe" / "json"
+    pickle_output_dir = data_dir / "keypoints_mediapipe" / "pickle"
 
-    os.makedirs(json_output_dir, exist_ok=True)
-    os.makedirs(pickle_output_dir, exist_ok=True)
+    json_output_dir.mkdir(parents=True, exist_ok=True)
+    pickle_output_dir.mkdir(parents=True, exist_ok=True)
 
     total_videos = len(video_paths)
-    success_count = 0 
+    success_count = 0
     fail_count = 0
     failed_videos = []
 
@@ -199,36 +234,36 @@ def main():
         start_time = time.time()
 
         video_path = video_info['path']
-        file_path = os.path.join(DATA_DIR, video_path)
+        file_path = data_dir / video_path
 
-        if not os.path.exists(file_path):
+        if not file_path.exists():
             print(f"\nWarning: {file_path} 파일을 찾을 수 없어 건너 뜁니다.")
-            fail_count +=1 
+            fail_count +=1
             failed_videos.append(video_path)
             continue
 
         try:
-            frame_provider = VideoReader(file_path)
+            frame_provider = VideoReader(str(file_path))
 
             result = process_video(
                 frame_provider,
-                min_detection_confidence=0.5,
-                min_tracking_confidence=0.5
+                min_detection_confidence=args.min_detection_confidence,
+                min_tracking_confidence=args.min_tracking_confidence
             )
 
             filename = os.path.splitext(video_info['filename'])[0]
             exercise = video_info['exercise']
 
-            json_exercise_dir = os.path.join(json_output_dir, exercise)
-            pickle_exercise_dir = os.path.join(pickle_output_dir, exercise)
-            os.makedirs(json_exercise_dir, exist_ok=True)
-            os.makedirs(pickle_exercise_dir, exist_ok=True)
+            json_exercise_dir = json_output_dir / exercise
+            pickle_exercise_dir = pickle_output_dir / exercise
+            json_exercise_dir.mkdir(parents=True, exist_ok=True)
+            pickle_exercise_dir.mkdir(parents=True, exist_ok=True)
 
-            json_output_path = os.path.join(json_exercise_dir, f"{filename}.json")
-            save_to_json(result, json_output_path)
+            json_output_path = json_exercise_dir / f"{filename}.json"
+            save_to_json(result, str(json_output_path))
 
-            pickle_output_path = os.path.join(pickle_exercise_dir, f"{filename}.pkl")
-            save_to_pickle(result, pickle_output_path)
+            pickle_output_path = pickle_exercise_dir / f"{filename}.pkl"
+            save_to_pickle(result, str(pickle_output_path))
 
             end_time = time.time()
             elapsed_time = end_time - start_time

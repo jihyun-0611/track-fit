@@ -1,7 +1,17 @@
 # phase1: head만 학습 20epoch -> phase2: 전체 fine-tuning 80epoch
-from config import WORK_DIR
+import os
+from pathlib import Path
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 _base_='./j.py'
+
+# Load work_dir from .env (no defaults)
+_work_dir = Path(os.environ['WORK_DIR'])
 
 custom_imports = dict(
     imports=['freeze_backbone_hook'], 
@@ -17,7 +27,7 @@ custom_hooks = [
 
 
 total_epochs = 20
-work_dir = WORK_DIR + '/exercise/j_freeze2'
+work_dir = str(_work_dir / 'j_freeze')
 optimizer = dict(
     type='SGD',
     lr=0.01,

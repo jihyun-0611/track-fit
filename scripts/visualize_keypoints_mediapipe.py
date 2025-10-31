@@ -2,7 +2,8 @@ import cv2
 import json
 import numpy as np
 import os
-from config import DATA_DIR
+import argparse
+from pathlib import Path
 
 
 COCO_SKELETON = [
@@ -160,37 +161,93 @@ def visualize_video_with_keypoints(video_path, json_path, output_path=None,
 
 
 def main():
-    
-    video_name = "bench press_57"  # 파일명 (확장자 제외)
-    exercise_type = "bench press"   # 운동 타입
-    
-    video_path = os.path.join(DATA_DIR, "sample_videos", exercise_type, 
-                             f"{video_name}.mp4")
-    json_path = os.path.join(DATA_DIR, "keypoints_mediapipe_new", "json", 
-                            exercise_type, f"{video_name}.json")
-    output_path = os.path.join(DATA_DIR, "visualizations_new", 
-                              f"{video_name}_visualized.mp4")
-    
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    
-    if not os.path.exists(video_path):
+    # Load .env file
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except ImportError:
+        pass
+
+    parser = argparse.ArgumentParser(description='Visualize keypoints on exercise videos')
+    parser.add_argument(
+        '--data-dir',
+        type=str,
+        default=os.environ.get('DATA_DIR'),
+        help='Data directory path (default: $DATA_DIR from .env)'
+    )
+    parser.add_argument(
+        '--video-name',
+        type=str,
+        default='bench press_57',
+        help='Video filename without extension (default: bench press_57)'
+    )
+    parser.add_argument(
+        '--exercise-type',
+        type=str,
+        default='bench press',
+        help='Exercise type (default: bench press)'
+    )
+    parser.add_argument(
+        '--keypoints-dir',
+        type=str,
+        default='keypoints_mediapipe',
+        help='Keypoints directory name (default: keypoints_mediapipe)'
+    )
+    parser.add_argument(
+        '--output-dir',
+        type=str,
+        default='visualizations',
+        help='Output directory name (default: visualizations)'
+    )
+    parser.add_argument(
+        '--no-show',
+        action='store_true',
+        help='Do not show video window'
+    )
+    parser.add_argument(
+        '--no-save',
+        action='store_true',
+        help='Do not save output video'
+    )
+    parser.add_argument(
+        '--fps',
+        type=int,
+        default=30,
+        help='Output video FPS (default: 30)'
+    )
+    args = parser.parse_args()
+
+    if not args.data_dir:
+        print("Error: DATA_DIR not set. Please set DATA_DIR in .env file or use --data-dir argument.")
+        return
+
+    data_dir = Path(args.data_dir)
+    video_path = data_dir / "sample_videos" / args.exercise_type / f"{args.video_name}.mp4"
+    json_path = data_dir / args.keypoints_dir / "json" / args.exercise_type / f"{args.video_name}.json"
+
+    output_path = None
+    if not args.no_save:
+        output_path = data_dir / args.output_dir / f"{args.video_name}_visualized.mp4"
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if not video_path.exists():
         print(f"Error: {video_path} 파일을 찾을 수 없습니다.")
         return
-    if not os.path.exists(json_path):
+    if not json_path.exists():
         print(f"Error: {json_path} 파일을 찾을 수 없습니다.")
         return
-    
+
+    print(f"Data directory: {data_dir}")
     print(f"비디오 시각화 시작...")
     print(f"원본 비디오: {video_path}")
     print(f"키포인트 데이터: {json_path}")
 
-    
     visualize_video_with_keypoints(
-        video_path=video_path,
-        json_path=json_path,
-        output_path=output_path,  # None으로 설정하면 저장 안 함
-        show_video=True,          # False로 설정하면 화면에 표시 안 함
-        fps=30
+        video_path=str(video_path),
+        json_path=str(json_path),
+        output_path=str(output_path) if output_path else None,
+        show_video=not args.no_show,
+        fps=args.fps
     )
 
 

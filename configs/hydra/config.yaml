@@ -1,0 +1,42 @@
+# Main Hydra Configuration for Track-Fit Training
+# Override with: python train_hydra.py experiment=phase1_freeze
+
+defaults:
+  - model: protogcn
+  - training: default
+  - optional experiment: null
+  - _self_
+
+# Project paths (from .env)
+project:
+  base_dir: ${oc.env:BASE_DIR}
+  data_dir: ${oc.env:DATA_DIR}
+  checkpoint_dir: ${oc.env:CHECKPOINT_DIR}
+  work_dir: ${oc.env:WORK_DIR}
+
+# MMCv config file path (required for ProtoGCN)
+mmcv_config: configs/exercise/j.py
+
+# Training control
+training:
+  gpus: 1
+  port: null  # null for random port
+  validate: true
+  test_best: true
+  test_last: true
+  launcher: pytorch
+  seed: null
+  deterministic: false
+
+# Default experiment settings (override with experiment configs)
+experiment:
+  name: default
+  work_dir: ${hydra:run.dir}
+
+# Hydra output directory
+hydra:
+  run:
+    dir: ${project.work_dir}/hydra_runs/${experiment.name}/${now:%Y-%m-%d_%H-%M-%S}
+  sweep:
+    dir: ${project.work_dir}/hydra_multirun/${experiment.name}/${now:%Y-%m-%d_%H-%M-%S}
+    subdir: ${hydra.job.num}

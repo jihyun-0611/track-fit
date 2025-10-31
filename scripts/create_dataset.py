@@ -2,9 +2,10 @@ import json
 import pickle
 import numpy as np
 import os
+import argparse
 import pandas as pd
+from pathlib import Path
 from sklearn.model_selection import train_test_split
-from config import DATA_DIR
 
 
 def load_keypoints_from_json(json_path):
@@ -166,19 +167,58 @@ def verify_dataset(pkl_path):
 
 
 def main():
-    json_dir = os.path.join(DATA_DIR, "keypoints_mediapipe", "json")
-    csv_path = os.path.join(DATA_DIR, "filter_meta.csv")
-    output_path = os.path.join(DATA_DIR, "exercise_dataset.pkl")
+    # Load .env file
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except ImportError:
+        pass
 
-    if not os.path.exists(json_dir):
+    parser = argparse.ArgumentParser(description='Create exercise dataset from keypoints')
+    parser.add_argument(
+        '--data-dir',
+        type=str,
+        default=os.environ.get('DATA_DIR'),
+        help='Data directory path (default: $DATA_DIR from .env)'
+    )
+    parser.add_argument(
+        '--train-ratio',
+        type=float,
+        default=0.8,
+        help='Train/validation split ratio (default: 0.8)'
+    )
+    parser.add_argument(
+        '--random-seed',
+        type=int,
+        default=42,
+        help='Random seed for reproducibility (default: 42)'
+    )
+    args = parser.parse_args()
+
+    if not args.data_dir:
+        print("Error: DATA_DIR not set. Please set DATA_DIR in .env file or use --data-dir argument.")
+        return
+
+    data_dir = Path(args.data_dir)
+    json_dir = data_dir / "keypoints_mediapipe" / "json"
+    csv_path = data_dir / "filter_meta.csv"
+    output_path = data_dir / "exercise_dataset.pkl"
+
+    if not json_dir.exists():
         print(f"Error: {json_dir} 디렉토리를 찾을 수 없습니다.")
         return
-    if not os.path.exists(csv_path):
+    if not csv_path.exists():
         print(f"Error: {csv_path} 파일을 찾을 수 없습니다.")
         return
 
-    create_dataset(json_dir, csv_path, output_path)
-    verify_dataset(output_path)
+    print(f"Data directory: {data_dir}")
+    print(f"Keypoints directory: {json_dir}")
+    print(f"CSV path: {csv_path}")
+    print(f"Output path: {output_path}\n")
+
+    create_dataset(str(json_dir), str(csv_path), str(output_path),
+                   train_ratio=args.train_ratio, random_seed=args.random_seed)
+    verify_dataset(str(output_path))
     print("데이터셋 생성 및 검증 완료.")
 
 if __name__ == '__main__':

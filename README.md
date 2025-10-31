@@ -1,101 +1,344 @@
-# track-fit
+# Track-Fit: 운동 동작 품질 평가 시스템
 
-## 프로젝트 개요
+ProtoGCN 기반 실시간 운동 동작 인식 및 품질 평가 시스템
 
-Track-Fit은 컴퓨터 비전 기반 피트니스 트래킹 시스템으로, 3단계 파이프라인을 통해 운동 자세를 평가합니다:
-1. **2D 키포인트 추출** (MobileNet 기반 OpenPose)
-2. **3D 자세 추정** (선형 잔여 네트워크)  
-3. **운동 평가** (기준선 대비 동적 시간 정렬)
+## 📋 프로젝트 개요
 
-## 핵심 아키텍처
+Track-Fit은 운동 영상에서 동작의 품질을 평가하기 위한 딥러닝 기반 시스템입니다. [ProtoGCN](https://openaccess.thecvf.com/content/CVPR2025/html/Liu_Revealing_Key_Details_to_See_Differences_A_Novel_Prototypical_Perspective_CVPR_2025_paper.html)(Prototype Graph Convolutional Network)을 활용하여 운동 동작의 프로토타입을 학습하고, 실시간으로 동작을 인식하며 품질을 평가합니다.
 
-### 데이터 플로우 파이프라인
+- **실시간 동작 인식**: 웹캠을 통한 실시간 운동 동작 인식
+- **5가지 운동 지원**: Barbell Biceps Curl, Bench Press, Lat Pulldown, Push-up, Tricep Pushdown
+- **프로토타입 기반 학습**: ProtoGCN을 활용한 운동별 프로토타입 학습
+- **품질 평가**: 학습된 프로토타입과의 유사도 기반 동작 품질 평가 
+
+## 🏗️ 프로젝트 구조
+
 ```
-비디오 → 2D JSON → NPZ 시퀀스 → 기준선 NPZ → 실시간 DTW 점수
+track-fit/
+├── configs/
+│   ├── exercise/              # MMCv config (ProtoGCN용)
+│   │   ├── j.py              # Full fine-tuning config
+│   │   └── j_freeze.py       # Freeze backbone config
+│   └── hydra/                # Hydra experiment configs
+│       ├── config.yaml       # Main config
+│       ├── experiment/       # Experiment presets
+│       │   ├── phase1_freeze.yaml
+│       │   ├── phase2_finetune.yaml
+│       │   └── debug.yaml
+│       ├── model/
+│       │   └── protogcn.yaml
+│       └── training/
+│           └── default.yaml
+├── demo/                      # Real-time demo app
+│   ├── app/                  # Web application
+│   ├── extractor/            # MediaPipe keypoint extraction server
+│   └── inferencer/           # ProtoGCN inference server
+├── external/
+│   └── ProtoGCN/             # ProtoGCN submodule
+├── scripts/
+│   ├── create_dataset.py     # Dataset creation
+│   ├── extract_keypoint_mediapipe.py  # Keypoint extraction
+│   └── visualize_keypoints_mediapipe.py  # Visualization
+├── freeze_backbone_hook.py    # Custom training hook
+└── train_hydra.py            # Hydra training script
 ```
 
-### 주요 구성 요소
-- **외부 OpenPose**: `external/lightweight-human-pose-estimation.pytorch/` - 사전 훈련된 2D 자세 추정
-- **3D 자세 모델**: `model/Pose3D.py` - Human3.6M으로 훈련된 2D→3D 변환 LinearModel
-- **그래프 네트워크**: `model/GCN.py` - 자세 시퀀스 분류를 위한 PyTorch Geometric 모델
-- **시퀀스 분석**: `utils/sequences.py` - DTW 거리 계산 및 기준선 비교
-- **스켈레톤 그래프**: `utils/graphs.py` - 인접 행렬을 가진 18관절 OpenPose 스켈레톤
+## 🚀 설치 및 환경 설정
 
-### 파일 구조
-- `data/sample_videos/` - 운동 종류별 원시 비디오 데이터
-- `data/keypoints/` - 2D 자세 JSON 파일 (프레임별 자세)
-- `data/sequences/` - 훈련/평가용 NPZ 시간 시퀀스
-- `data/baseline_means/` & `data/baseline_best/` - 비교를 위한 기준 시퀀스
-- `weight/checkpoint_iter_370000.pth` - 사전 훈련된 2D 자세 모델 가중치
-- `checkpoint/Best model_39` - 훈련된 3D 자세 모델 체크포인트
+### 1. 저장소 클론 및 서브모듈 초기화
 
-## 일반적인 개발 명령어
-
-### 데이터 처리 파이프라인
 ```bash
-# 비디오에서 2D 키포인트 추출
-python scripts/extract_2d_keypoints.py
+git clone https://github.com/jihyun-0611/track-fit.git
+cd track-fit
 
-# 시간 시퀀스로 변환
-python scripts/extract_sequence.py
+# ProtoGCN 서브모듈 초기화
+git submodule update --init --recursive
 
-# 훈련된 모델을 사용해 3D 좌표 추가
-python scripts/estimate_z_using_pose3d.py
+# ProtoGCN 환경 설정
+cd external/ProtoGCN
+conda env create -f protogcn.yaml
+conda activate protogcn
+pip install -e .
 
-# 기준선 참조 시퀀스 생성
-python scripts/create_baseline_sequence.py
+# Hydra 설치 (실험 관리용)
+cd ../..
+pip install hydra-core omegaconf
 
-# 2D 스켈레톤 데이터 시각화
-python scripts/visualize_2d_skeleton_from_json.py
+pip install python-dotenv
 ```
 
-### 훈련
 ```bash
-# 3D 자세 추정 모델 훈련
-python scripts/train_pose3d.py
+# MediaPipe 환경 (키포인트 추출 및 웹 서버용)
+conda create -n mediapipe python=3.8
+conda activate mediapipe
+pip install -r demo/extractor/requirements.txt
 ```
 
-### 데모 및 테스트
+### 2. 환경 변수 설정
+
+`.env` 파일 생성:
 ```bash
-# 실시간 데모 실행 (웹캠 또는 비디오)
-python demo.py
-
-# 데모는 코드 수정을 통해 매개변수를 받습니다:
-# - video_path: 입력 비디오 경로 (웹캠의 경우 None)
-# - exercise_name: 평가할 목표 운동
-# - baseline_dir: 참조 기준선 디렉토리
-# - save_output: 처리된 비디오 저장 여부
+BASE_DIR=/path/to/track-fit
+DATA_DIR=/path/to/track-fit/data
+CHECKPOINT_DIR=/path/to/track-fit/checkpoints
+WORK_DIR=/path/to/track-fit/work_dirs
+PRETRAINED=/path/to/track-fit/checkpoints/finegym_j/best.pth
+DATASET_PATH=/path/to/track-fit/data/exercise_dataset.pkl
 ```
 
-### 의존성
-외부 자세 추정에 필요한 패키지:
+## 📊 데이터 준비
+
+https://www.kaggle.com/datasets/hasyimabdillah/workoutfitness-video
+
+### 1. 비디오 데이터 구조
+
 ```
-torch>=0.4.1
-torchvision>=0.2.1
-pycocotools==2.0.0
-opencv-python>=3.4.0.14
-numpy>=1.14.0
+data/
+├── sample_videos/
+│   ├── barbell biceps curl/
+│   ├── bench press/
+│   ├── lat pulldown/
+│   ├── push-up/
+│   └── tricep Pushdown/
+└── filter_meta.csv  # 비디오 메타데이터
 ```
 
-추가 의존성: scikit-learn, fastdtw, scipy, torch-geometric
+### 2. 키포인트 추출
 
-## 주요 기술적 세부사항
+```bash
+conda activate mediapipe
 
-### 좌표계
-- **OpenPose**: (x,y,confidence) 형식의 18개 키포인트
-- **Human3.6M**: 3D 자세 훈련에 사용되는 16개 키포인트
-- **변환**: `utils/poses.py`에서 형식 변환 처리
+# 기본 실행 (.env의 DATA_DIR)
+python scripts/extract_keypoint_mediapipe.py
 
-### 운동 평가
-- **DTW 알고리즘**: 가변 길이 시퀀스와 누락된 키포인트 처리
-- **슬라이딩 윈도우**: 실시간 평가를 위한 30프레임 버퍼  
-- **점수 정규화**: DTW 거리를 0-100 스케일로 매핑
-- **기준선 유형**: 평균 기반 또는 최적 대표 시퀀스
+# 커스텀 data directory
+python scripts/extract_keypoint_mediapipe.py --data-dir /path/to/data
 
-### 모델 체크포인트
-- 2D 자세 모델: COCO 데이터셋으로 사전 훈련
-- 3D 자세 모델: Human3.6M으로 훈련, `checkpoint/` 디렉토리에 저장
-- GCN 모델: 시퀀스 분류를 위해 스켈레톤 인접 행렬 사용
+# 신뢰도 임계값 조정
+python scripts/extract_keypoint_mediapipe.py --min-detection-confidence 0.7 --min-tracking-confidence 0.7
+```
 
-## 지원 운동
-현재 데이터셋에는 바벨 이두 컬, 벤치 프레스, 랫 풀다운, 푸시업, 삼두 푸시다운, 데드리프트, 힙 쓰러스트 등이 포함됩니다. 기준선 시퀀스를 추가하여 새로운 운동으로 확장 가능합니다.
+### 3. 데이터셋 생성
+
+```bash
+# 기본 실행 (.env의 DATA_DIR 사용 또는 자동 탐색)
+python scripts/create_dataset.py
+
+# 커스텀 data directory
+python scripts/create_dataset.py --data-dir /path/to/data
+
+# Train/validation split 비율 변경
+python scripts/create_dataset.py --train-ratio 0.9 --random-seed 123
+```
+
+### 4. 키포인트 시각화
+
+```bash
+# 특정 비디오의 키포인트 시각화
+python scripts/visualize_keypoints_mediapipe.py \
+    --video-name "bench press_57" \
+    --exercise-type "bench press"
+
+# 저장만 하고 화면에 표시하지 않기
+python scripts/visualize_keypoints_mediapipe.py \
+    --video-name "bench press_57" \
+    --exercise-type "bench press" \
+    --no-show
+```
+
+## 🏋️ 모델 학습
+
+### 사전학습 모델 준비
+
+FineGYM 데이터셋으로 사전학습된 모델을 [여기서](https://github.com/firework8/ProtoGCN/blob/ddf7f274f9f5d9e45a2fcfeb299bfb3fd7c2303d/data/README.md) 다운로드:
+```bash
+mkdir -p checkpoints/finegym_j
+# best_top1_acc_epoch_141.pth 파일을 checkpoints/finegym_j/에 배치
+```
+
+### 학습 실행
+
+ProtoGCN 환경 활성화 필요
+```bash
+conda activate protogcn
+```
+
+#### 학습 설정 
+
+**Phase 1** (`phase1_freeze.yaml`):
+- 20 epochs
+- Head만 학습 (backbone freeze)
+- Learning rate: 0.01
+- Optimizer: SGD with Nesterov momentum
+- LR Schedule: CosineAnnealing
+
+**Phase 2** (`phase2_finetune.yaml`):
+- 80 epochs
+- 전체 파인튜닝
+- Learning rate: 0.001
+- Optimizer: SGD with Nesterov momentum
+- LR Schedule: CosineAnnealing
+
+#### 학습 실행
+
+```bash
+# Phase 1: Backbone freeze, Head만 학습 (20 epochs)
+python train_hydra.py experiment=phase1_freeze
+
+# Phase 2: 전체 파인튜닝 (80 epochs)
+python train_hydra.py experiment=phase2_finetune
+
+# 빠른 테스트 (2 epochs)
+python train_hydra.py experiment=debug
+```
+
+#### 설정 커스터마이징
+
+**하이퍼파라미터**:
+```bash
+# Learning rate 변경
+python train_hydra.py experiment=phase1_freeze training.optimizer.lr=0.02
+
+# Epoch 수 변경
+python train_hydra.py experiment=phase2_finetune training.epochs=100
+
+# Batch size 변경
+python train_hydra.py training.batch_size=8
+
+# 여러 설정 동시 변경
+python train_hydra.py experiment=phase1_freeze \
+    training.epochs=30 \
+    training.optimizer.lr=0.02 \
+    training.batch_size=8 \
+    model.num_prototype=100
+```
+
+**Pretrained 모델 지정**:
+```bash
+# Phase 2에서 Phase 1 결과 사용
+python train_hydra.py experiment=phase2_finetune \
+    pretrained=work_dirs/exercise/j_freeze/best_top1_acc_epoch_13.pth
+```
+
+**GPU 설정**:
+```bash
+python train_hydra.py training.gpus=2
+```
+
+#### 하이퍼파라미터 서치 (Multirun)
+
+여러 설정을 자동으로 실험:
+```bash
+# 여러 learning rate 테스트
+python train_hydra.py -m training.optimizer.lr=0.001,0.01,0.05
+
+# 여러 조합 테스트 (2×2=4개 실험 자동 실행)
+python train_hydra.py -m \
+    training.optimizer.lr=0.001,0.01 \
+    training.batch_size=4,8
+```
+
+#### 커스텀 실험
+
+`configs/hydra/experiment/my_experiment.yaml` 생성:
+```yaml
+# @package _global_
+
+mmcv_config: configs/exercise/j.py
+
+training:
+  epochs: 50
+  optimizer:
+    lr: 0.005
+
+experiment:
+  name: my_experiment
+  work_dir: ${project.work_dir}/my_experiment
+
+pretrained: ${project.checkpoint_dir}/finegym_j/best_top1_acc_epoch_141.pth
+```
+
+실행:
+```bash
+python train_hydra.py experiment=my_experiment
+```
+
+
+
+
+## 🎮 데모 실행
+
+### 데모 서버 시작
+
+```bash
+cd demo/scripts
+bash run_demo.sh
+```
+
+또는 각 서버를 개별적으로 실행:
+
+```bash
+# Terminal 1: MediaPipe 키포인트 추출 서버
+conda activate mediapipe
+cd demo/extractor
+python api.py  # http://localhost:8001
+
+# Terminal 2: ProtoGCN 추론 서버
+conda activate protogcn
+cd demo/inferencer
+python api.py  # http://localhost:8002
+
+# Terminal 3: 웹 애플리케이션
+conda activate mediapipe
+cd demo/app
+python main.py  # http://localhost:8000
+```
+
+
+## 🔬 동작 품질 평가
+
+학습된 프로토타입과 입력 동작의 유사도를 계산하여 품질을 평가합니다.
+
+### 1. L2 Normalized Cosine Similarity
+- 범위: [-1, 1], 1에 가까울수록 유사
+- Temperature scaling 적용 가능
+
+### 2. 관절별 Reconstruction Error
+- 원본 vs 복원된 graph의 관절별 차이 계산
+- 잘못된 자세의 구체적 위치 파악 가능
+
+## 📈 성능
+
+### 학습 결과
+- 5개 운동 클래스 분류
+- 227개 비디오 (181 train, 46 val)
+- Best validation accuracy: 0.9565% (epoch 15)
+
+### 실시간 추론
+- 60 프레임 버퍼링 후 실시간 예측
+- 슬라이딩 윈도우 방식으로 지속적 업데이트
+- 300 프레임 도달 시 자동 리셋
+
+## 🛠️ 기술 스택
+
+- **Deep Learning Framework**: PyTorch 2.6.0
+- **Experiment Management**: Hydra + OmegaConf
+- **Pose Estimation**: MediaPipe
+- **GCN Model**: ProtoGCN (서브모듈)
+- **Web Framework**: FastAPI
+- **Frontend**: WebSocket + Canvas API
+- **Computer Vision**: OpenCV
+
+## 📚 참고 문헌
+
+- ProtoGCN: [GitHub Repository](https://github.com/firework8/ProtoGCN.git)
+- MediaPipe Pose: [Google MediaPipe](https://google.github.io/mediapipe/solutions/pose)
+
+## 📄 라이선스
+
+This project is for research purposes only.
+
+
+---
+
+**Note**: 이 프로젝트는 현재 개발 중이며, 동작 품질 평가 기능은 추후 추가 구현 예정입니다.

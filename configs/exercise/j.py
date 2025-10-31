@@ -1,10 +1,22 @@
 # 5 classes, 227 videos (181 train, 46 val)
-# 경로 설정..
-from config import DATASET_PATH, PRETRAINED, WORK_DIR
+# All paths loaded from .env file
+import os
+from pathlib import Path
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
+# Load paths from .env (no defaults)
+_data_dir = Path(os.environ['DATA_DIR'])
+_work_dir = Path(os.environ['WORK_DIR'])
+_checkpoint_dir = Path(os.environ['CHECKPOINT_DIR'])
 
 modality = 'j'
 graph = 'coco_new'
-work_dir = WORK_DIR + '/exercise/j_phase2_2'
+work_dir = str(_work_dir / 'j_phase2')
 
 model = dict(
     type = 'RecognizerGCN',
@@ -26,7 +38,7 @@ model = dict(
 )
 
 dataset_type = 'PoseDataset'
-ann_file = DATASET_PATH
+ann_file = os.environ['DATASET_PATH']
 
 train_pipeline = [
     dict(type='UniformSampleFrames', clip_len=100),
@@ -79,7 +91,14 @@ evaluation = dict(
 )
 log_config = dict(interval=10, hooks=[dict(type='TextLoggerHook')])
 
-load_from = "/home/ahi0611/workspace/track-fit/work_dirs/exercise/j_freeze2/best_top1_acc_epoch_13.pth"
+# Load pretrained model from .env
+# If not set or doesn't exist, use default finegym checkpoint
+_pretrained_path = os.environ.get('PRETRAINED', '')
+if _pretrained_path and Path(_pretrained_path).exists():
+    load_from = _pretrained_path
+else:
+    load_from = str(_checkpoint_dir / 'finegym_j' / 'best_top1_acc_epoch_141.pth')
+
 
 resume_from = None
 auto_resume = True

@@ -1,0 +1,34 @@
+# ProtoGCN model configuration
+# Override with: model.num_prototype=100
+
+# Model architecture
+num_prototype: 50
+num_classes: 5
+in_channels: 384
+dropout: 0.5
+
+# Graph configuration
+graph:
+  layout: coco_new
+  mode: random
+  num_filter: 8
+  init_off: 0.04
+  init_std: 0.02
+
+# TCN configuration
+tcn_ms_cfg:
+  - [3, 1]
+  - [3, 2]
+  - [3, 3]
+  - [3, 4]
+  - ["max", 3]
+  - "1x1"
+
+# Data pipeline
+data:
+  modality: j  # joint modality
+  clip_len: 100
+  num_clips_train: 1
+  num_clips_val: 1
+  num_clips_test: 10
+  num_person: 1
