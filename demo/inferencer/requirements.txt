@@ -1,5 +1,6 @@
 addict==2.4.0
 annotated-types==0.5.0
+antlr4-python3-runtime==4.9.3
 anyio==3.7.1
 backcall==0.2.0
 Bottleneck @ file:///tmp/build/80754af9/bottleneck_1648028896657/work
@@ -21,10 +22,12 @@ fastapi==0.103.2
 fonttools==4.38.0
 fvcore==0.1.5.post20221221
 h11==0.14.0
+hydra-core==1.3.2
 idna @ file:///croot/idna_1666125576474/work
 imageio==2.27.0
 imageio-ffmpeg==0.4.8
 importlib-metadata==6.7.0
+importlib-resources==5.12.0
 iopath==0.1.10
 ipython==7.34.0
 jedi==0.18.2
@@ -44,6 +47,7 @@ msgpack-numpy==0.4.7.1
 munkres==1.1.4
 numexpr @ file:///tmp/build/80754af9/numexpr_1640704205123/work
 numpy==1.20.3
+omegaconf==2.3.0
 opencv-python==4.7.0.72
 packaging==23.0
 pandas==1.3.5
@@ -86,6 +90,7 @@ typing_extensions==4.7.1
 urllib3==1.26.15
 uvicorn==0.22.0
 wcwidth==0.2.6
+websockets==11.0.3
 xtcocotools==1.13
 yacs==0.1.8
 yapf==0.32.0

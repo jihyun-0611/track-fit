@@ -150,55 +150,6 @@ python scripts/visualize_keypoints_mediapipe.py \
     --no-show
 ```
 
-### 5. 프로토타입-클래스 매핑 생성
-
-학습된 모델에서 각 프로토타입이 어느 운동 클래스에 속하는지 분석:
-
-```bash
-conda activate protogcn
-
-# 전체 데이터셋 분석
-python scripts/analyze_prototype_class_mapping.py
-```
-
-**생성 결과:**
-- `prototype_class_mapping.pkl` 파일 생성
-- 각 프로토타입의 클래스 할당 정보 저장
-- 품질 평가 시 자동으로 로딩됨
-
-### 6. 품질 평가 테스트
-
-학습된 모델로 운동 품질 평가 기능을 테스트:
-
-```bash
-conda activate protogcn
-
-# 기본 실행
-python scripts/test_quality_assessment.py
-```
-
-**테스트 내용:**
-- Response Signal 추출 검증
-- **클래스별 프로토타입 필터링** 적용
-- 전역 품질 점수 계산 (Top-K 프로토타입 집중도)
-- 관절별 품질 점수 계산 (관절당 최대 응답값)
-- 취약 관절 자동 식별
-- 품질 해석 및 등급 부여
-
-**출력 예시:**
-```
-Quality Assessment:
-  Global Quality Score: 0.0205
-  Level: Poor (red)
-  Used Prototypes: 7 prototypes for class 'lat pulldown'
-
-Joint-wise Quality:
-  Mean Joint Quality: 0.0208
-  Weak Joints (< 0.3): [0,1,2,...,19] (20 joints)
-  Top 3 Best Joints: [14, 5, 3]
-  Top 3 Worst Joints: [1, 2, 13]
-```
-
 ## 🏋️ 모델 학습
 
 ### 사전학습 모델 준비
@@ -276,36 +227,6 @@ python train_hydra.py experiment=phase2_finetune \
 **GPU 설정**:
 ```bash
 python train_hydra.py training.gpus=2
-```
-
-
-
-## 🎮 데모 실행
-
-### 데모 서버 시작
-
-```bash
-cd demo/scripts
-bash run_demo.sh
-```
-
-또는 각 서버를 개별적으로 실행:
-
-```bash
-# Terminal 1: MediaPipe 키포인트 추출 서버
-conda activate mediapipe
-cd demo/extractor
-python api.py  # http://localhost:8001
-
-# Terminal 2: ProtoGCN 추론 서버
-conda activate protogcn
-cd demo/inferencer
-python api.py  # http://localhost:8002
-
-# Terminal 3: 웹 애플리케이션
-conda activate mediapipe
-cd demo/app
-python main.py  # http://localhost:8000
 ```
 
 
@@ -391,17 +312,87 @@ $$Q_{\text{global}} = \frac{1}{V^2} \sum_{i=1}^{V^2} \sum_{j=1}^{K} \text{TopK}(
   - 0.3~0.5: 보통
   - 0.3 이하: 해당 관절의 동작이 해당 운동 패턴에서 비정상
 
-**제공 정보:**
+**결과:**
 - 각 관절별 품질 점수 (20개 관절)
 - 평균/표준편차/최소/최대 관절 품질
-- 취약 관절 식별 (임계값 < 0.3)
 
-**클래스별 평가 장점:**
-- Push-up 수행 시 Push-up에 중요한 관절(팔꿈치, 어깨)의 품질을 정확히 평가
-- Bench press 프로토타입이 아닌 Push-up 프로토타입과 비교하므로 더 정확한 피드백 제공
+### 코드 실행
+#### 1. 프로토타입-클래스 매핑 생성
 
+학습된 모델에서 각 프로토타입이 어느 운동 클래스에 속하는지 분석:
 
+```bash
+conda activate protogcn
 
+# 전체 데이터셋 분석
+python scripts/analyze_prototype_class_mapping.py
+```
+
+**생성 결과:**
+- `prototype_class_mapping.pkl` 파일 생성
+- 각 프로토타입의 클래스 할당 정보 저장
+- 품질 평가 시 자동으로 로딩됨
+
+#### 2. 품질 평가 테스트
+
+학습된 모델로 운동 품질 평가 기능을 테스트:
+
+```bash
+conda activate protogcn
+
+# 기본 실행
+python scripts/test_quality_assessment.py
+```
+
+**테스트 내용:**
+- Response Signal 추출 검증
+- **클래스별 프로토타입 필터링** 적용
+- 전역 품질 점수 계산 (Top-K 프로토타입 집중도)
+- 관절별 품질 점수 계산 (관절당 최대 응답값)
+- 취약 관절 자동 식별
+- 품질 해석 및 등급 부여
+
+**출력 예시:**
+```
+Quality Assessment:
+  Global Quality Score: 0.0205
+  Level: Poor (red)
+  Used Prototypes: 7 prototypes for class 'lat pulldown'
+
+Joint-wise Quality:
+  Mean Joint Quality: 0.0208
+  Weak Joints (< 0.3): [0,1,2,...,19] (20 joints)
+  Top 3 Best Joints: [14, 5, 3]
+  Top 3 Worst Joints: [1, 2, 13]
+```
+
+## 🎮 데모 실행
+
+### 데모 서버 시작
+
+```bash
+cd demo/scripts
+bash run_demo.sh
+```
+
+또는 각 서버를 개별적으로 실행:
+
+```bash
+# Terminal 1: MediaPipe 키포인트 추출 서버
+conda activate mediapipe
+cd demo/extractor
+python api.py  # http://localhost:8001
+
+# Terminal 2: ProtoGCN 추론 서버
+conda activate protogcn
+cd demo/inferencer
+python api.py  # http://localhost:8002
+
+# Terminal 3: 웹 애플리케이션
+conda activate mediapipe
+cd demo/app
+python main.py  # http://localhost:8000
+```
 
 ## 📈 성능
 
