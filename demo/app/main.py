@@ -25,7 +25,9 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     selected_exercise = None  # Track currently selected exercise
 
-    async with httpx.AsyncClient() as client:
+    # Increase timeout for quality assessment (which can take longer)
+    timeout = httpx.Timeout(30.0, connect=10.0)  # 30s read, 10s connect
+    async with httpx.AsyncClient(timeout=timeout) as client:
         try:
             while True:
                 data = await websocket.receive_text()
@@ -91,11 +93,11 @@ async def websocket_endpoint(websocket: WebSocket):
                     # 예측 결과가 있으면 추가
                     if gcn_results.get("prediction"):
                         response_data["prediction"] = gcn_results["prediction"]
-                    
+
                     # 자동 리셋 상태 처리
                     if gcn_results.get("status") == "auto_reset":
                         response_data["status"] = "auto_reset"
-                    
+
                     await websocket.send_text(json.dumps(response_data))
                 else:
                     await websocket.send_text(json.dumps({

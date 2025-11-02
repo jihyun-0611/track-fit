@@ -74,27 +74,47 @@
                 <h3>상태</h3>
                 <p id="pose-status">운동을 선택하고 시작을 눌러주세요.</p>
             </div>
+
+            <div class="status" id="camera-warning" style="display: none; background: #4a2a2a; border-left: 4px solid #f44336;">
+                <h3>⚠ 카메라 안내</h3>
+                <p>관절 인식률이 낮습니다. 카메라 각도를 조절해주세요.</p>
+            </div>
             
             <div class="prediction-section">
                 <h3>동작 인식</h3>
                 <div id="buffer-info" class="buffer-info">버퍼: <span id="buffer-count">0</span> 프레임 <span id="buffer-status">(예측 대기 중)</span></div>
                 <div id="prediction-result">
-                    <div id="selected-exercise-score" class="exercise-name" style="display: none;">
-                        <span id="selected-exercise-name">Barbell Biceps Curl</span> 신뢰도: <span id="selected-score-value">0.0</span>%
-                    </div>
-                    <div id="comparison" class="comparison" style="display: none;">
-                        <span id="comparison-result"></span>
+                    <div id="selected-exercise-display" style="display: none;">
+                        <div class="exercise-name">
+                            <span id="selected-exercise-name">Barbell Biceps Curl</span>
+                        </div>
+                        <div id="comparison" class="comparison">
+                            <span id="comparison-result"></span>
+                        </div>
                     </div>
                     <div id="waiting-message">
                         <p>포즈가 감지되면 동작을 인식합니다.</p>
                     </div>
                 </div>
             </div>
+
+            <div class="quality-section" style="background: #2a2a2a; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: none;" id="quality-section">
+                <h3>품질 평가</h3>
+                <div id="global-quality" style="margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 1.1em;">전역 품질 점수:</span>
+                        <span id="global-quality-score" style="font-size: 1.3em; font-weight: bold;">-</span>
+                    </div>
+                    <div id="quality-level" style="margin-top: 5px; padding: 8px; border-radius: 4px; text-align: center; font-weight: bold;">
+                        <span id="quality-message">-</span>
+                    </div>
+                </div>
+            </div>
             
             <div class="joint-scores">
-                <h3>관절 스코어</h3>
+                <h3>관절별 품질 평가</h3>
                 <div id="joint-list">
-                    <p>포즈가 감지되면 관절 스코어가 표시됩니다.</p>
+                    <p>동작 인식 후 관절별 품질이 표시됩니다.</p>
                 </div>
             </div>
         </div>
@@ -108,6 +128,7 @@
         let isRunning = false;
         let selectedExercise = 'barbell biceps curl';
         let frameInterval = null;
+        let lastQualityData = null;  // 마지막 품질 평가 데이터 저장
         
         navigator.mediaDevices.getUserMedia({video: true})
             .then(stream => video.srcObject = stream);
@@ -187,28 +208,75 @@
             });
         }
         
-        function updateJointScores(jointScores) {
-            const jointList = document.getElementById('joint-list');
+        function checkCameraAngle(jointScores) {
+            // MediaPipe 관절 신뢰도 체크: 0.3 이상인 관절이 5개 미만이면 경고
+            const cameraWarning = document.getElementById('camera-warning');
             if (!jointScores || jointScores.length === 0) {
-                jointList.innerHTML = '<p>포즈가 감지되지 않음</p>';
+                cameraWarning.style.display = 'none';
                 return;
             }
-            
-            let html = '';
-            jointScores.forEach(joint => {
-                const score = (joint.score * 100).toFixed(1);
-                const scoreClass = joint.score > 0.8 ? 'high' : 
-                                 joint.score > 0.5 ? 'medium' : 'low';
-                const jointName = JOINT_NAMES[joint.joint_id] || `관절 ${joint.joint_id}`;
-                
-                html += `
-                    <div class="joint-item">
-                        <span>${jointName}</span>
-                        <span class="joint-score ${scoreClass}">${score}%</span>
-                    </div>
-                `;
-            });
-            jointList.innerHTML = html;
+
+            const highConfidenceJoints = jointScores.filter(joint => joint.score >= 0.3);
+            if (highConfidenceJoints.length < 5) {
+                cameraWarning.style.display = 'block';
+            } else {
+                cameraWarning.style.display = 'none';
+            }
+        }
+
+        function updateQualityAssessment(quality) {
+            const qualitySection = document.getElementById('quality-section');
+            const globalScoreEl = document.getElementById('global-quality-score');
+            const qualityLevelEl = document.getElementById('quality-level');
+            const qualityMessageEl = document.getElementById('quality-message');
+            const jointListEl = document.getElementById('joint-list');
+
+            if (!quality) {
+                qualitySection.style.display = 'none';
+                jointListEl.innerHTML = '<p>동작 인식 후 관절별 품질이 표시됩니다.</p>';
+                return;
+            }
+
+            // 품질 평가 섹션 표시
+            qualitySection.style.display = 'block';
+
+            // 전역 품질 점수 표시
+            const globalScore = (quality.global_score * 100).toFixed(1);
+            globalScoreEl.textContent = `${globalScore}%`;
+            globalScoreEl.style.color = quality.color;
+
+            // 품질 레벨 및 메시지 표시
+            qualityLevelEl.style.backgroundColor = quality.color + '33';  // 투명도 추가
+            qualityLevelEl.style.color = quality.color;
+            qualityMessageEl.textContent = `${quality.level} - ${quality.message}`;
+
+            // 관절별 품질 점수 표시
+            if (quality.joint_wise && quality.joint_wise.joint_scores) {
+                const jointScores = quality.joint_wise.joint_scores;
+                const weakJoints = quality.joint_wise.weak_joints || [];
+
+                let html = '<div style="margin-bottom: 10px; padding: 8px; background: #333; border-radius: 4px;">';
+                html += `<div style="font-size: 0.9em; color: #888;">평균: ${(quality.joint_wise.mean_joint_quality * 100).toFixed(1)}% | `;
+                html += `취약 관절: ${quality.joint_wise.num_weak_joints}개</div>`;
+                html += '</div>';
+
+                jointScores.forEach((score, index) => {
+                    const scorePercent = (score * 100).toFixed(1);
+                    const isWeak = weakJoints.includes(index);
+                    const scoreClass = score > 0.5 ? '' : (score > 0.3 ? 'medium' : 'low');
+                    const jointName = JOINT_NAMES[index] || `관절 ${index}`;
+
+                    html += `
+                        <div class="joint-item" style="${isWeak ? 'background: #3a2a2a;' : ''}">
+                            <span>${jointName}${isWeak ? ' ⚠' : ''}</span>
+                            <span class="joint-score ${scoreClass}">${scorePercent}%</span>
+                        </div>
+                    `;
+                });
+                jointListEl.innerHTML = html;
+            } else {
+                jointListEl.innerHTML = '<p>관절별 품질 데이터가 없습니다.</p>';
+            }
         }
         
         function updatePrediction(data) {
@@ -216,9 +284,9 @@
             const bufferCount = data.buffer_count || 0;
             const bufferCountEl = document.getElementById('buffer-count');
             const bufferStatusEl = document.getElementById('buffer-status');
-            
+
             if (bufferCountEl) bufferCountEl.textContent = bufferCount;
-            
+
             if (bufferStatusEl) {
                 if (bufferCount < 60) {
                     bufferStatusEl.textContent = '(예측 대기 중)';
@@ -226,87 +294,98 @@
                     bufferStatusEl.textContent = '(실시간 인식 중)';
                 }
             }
-            
+
             // 선택된 운동 업데이트
             const currentExerciseEl = document.getElementById('current-exercise');
             if (currentExerciseEl) currentExerciseEl.textContent = selectedExercise;
-            
+
             // 예측 결과 업데이트
             if (data.prediction) {
                 const pred = data.prediction;
-                
+
                 // DOM 요소 참조 가져오기 (안전 처리)
-                const selectedExerciseScoreEl = document.getElementById('selected-exercise-score');
+                const selectedExerciseDisplayEl = document.getElementById('selected-exercise-display');
                 const selectedExerciseNameEl = document.getElementById('selected-exercise-name');
-                const selectedScoreValueEl = document.getElementById('selected-score-value');
                 const waitingMessageEl = document.getElementById('waiting-message');
-                const comparisonEl = document.getElementById('comparison');
                 const comparisonResultEl = document.getElementById('comparison-result');
-                
-                // 선택된 운동의 점수 표시
-                if (selectedExerciseScoreEl) selectedExerciseScoreEl.style.display = 'block';
+
+                // 선택된 운동 표시
+                if (selectedExerciseDisplayEl) selectedExerciseDisplayEl.style.display = 'block';
                 if (selectedExerciseNameEl) selectedExerciseNameEl.textContent = selectedExercise;
-                if (selectedScoreValueEl) {
-                    const selectedScore = pred.all_scores[selectedExercise] || 0;
-                    selectedScoreValueEl.textContent = (selectedScore * 100).toFixed(1);
-                }
-                if (comparisonEl) comparisonEl.style.display = 'block';
                 if (waitingMessageEl) waitingMessageEl.style.display = 'none';
-                
+
                 // 선택된 운동과 예측된 운동 비교
                 if (comparisonResultEl) {
                     const isCorrect = pred.class === selectedExercise;
                     if (isCorrect) {
                         comparisonResultEl.innerHTML = '<span class="correct">✓ 올바른 동작입니다!</span>';
                     } else {
-                        comparisonResultEl.innerHTML = '';
+                        comparisonResultEl.innerHTML = '<span class="incorrect">✗ 다른 동작으로 인식되었습니다 (예측: ' + pred.class + ')</span>';
                     }
                 }
-                
+
+                // 품질 평가 표시 (새로운 데이터가 있을 때만 업데이트)
+                if (pred.quality) {
+                    lastQualityData = pred.quality;  // 저장
+                    updateQualityAssessment(pred.quality);
+                }
+                // 품질 데이터가 없어도 기존 데이터 유지 (updateQualityAssessment(null) 호출 안 함)
+
             } else {
-                // 예측 결과가 없을 때만 메시지 표시 (30프레임 미만 또는 신뢰도 낮음)
-                const selectedExerciseScoreEl = document.getElementById('selected-exercise-score');
+                // 예측 결과가 없을 때만 메시지 표시
+                const selectedExerciseDisplayEl = document.getElementById('selected-exercise-display');
                 const waitingMessageEl = document.getElementById('waiting-message');
-                
-                if (selectedExerciseScoreEl && selectedExerciseScoreEl.style.display === 'none') {
-                    // 아직 예측 결과가 없는 경우에만 메시지 표시
-                    if (waitingMessageEl) {
-                        if (bufferCount >= 60) {
-                            waitingMessageEl.innerHTML = '<p>동작 분석 중... (신뢰도가 낮아 대기 중)</p>';
-                        } else {
-                            waitingMessageEl.innerHTML = '<p>동작 인식을 위해 60프레임 이상 필요</p>';
-                        }
-                        waitingMessageEl.style.display = 'block';
+
+                if (selectedExerciseDisplayEl) selectedExerciseDisplayEl.style.display = 'none';
+
+                if (waitingMessageEl) {
+                    if (bufferCount >= 60) {
+                        waitingMessageEl.innerHTML = '<p>동작 분석 중...</p>';
+                    } else {
+                        waitingMessageEl.innerHTML = '<p>동작 인식을 위해 60프레임 이상 필요</p>';
                     }
+                    waitingMessageEl.style.display = 'block';
                 }
+
+                // 품질 평가는 유지 (updateQualityAssessment(null) 호출 안 함)
             }
         }
         
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
-            
+
             const statusElement = document.getElementById('pose-status');
-            
+
             if (data.status === 'pose_detected') {
                 statusElement.textContent = '포즈 감지됨 - 실시간 분석 중';
                 drawPose(data.keypoints);
-                updateJointScores(data.joint_scores);
+
+                // MediaPipe 관절 신뢰도 체크 (카메라 각도 경고용)
+                checkCameraAngle(data.joint_scores);
+
                 updatePrediction(data);
             } else if (data.status === 'no_pose') {
                 statusElement.textContent = '포즈를 찾을 수 없음';
                 poseCtx.clearRect(0, 0, poseCanvas.width, poseCanvas.height);
-                updateJointScores([]);
+
+                // 카메라 경고 숨김
+                const cameraWarning = document.getElementById('camera-warning');
+                if (cameraWarning) cameraWarning.style.display = 'none';
+
                 // 포즈가 감지되지 않을 때는 예측 결과를 초기화하지 않음
-                // updatePrediction({ buffer_count: 0 });
             } else if (data.status === 'auto_reset') {
                 statusElement.textContent = '300프레임 도달 - 자동 리셋됨';
+
+                // 품질 데이터 초기화
+                lastQualityData = null;
+
                 // UI 자동 리셋
-                const selectedExerciseScoreEl = document.getElementById('selected-exercise-score');
-                const comparisonEl = document.getElementById('comparison');
+                const selectedExerciseDisplayEl = document.getElementById('selected-exercise-display');
                 const waitingMessageEl = document.getElementById('waiting-message');
-                
-                if (selectedExerciseScoreEl) selectedExerciseScoreEl.style.display = 'none';
-                if (comparisonEl) comparisonEl.style.display = 'none';
+                const qualitySection = document.getElementById('quality-section');
+
+                if (selectedExerciseDisplayEl) selectedExerciseDisplayEl.style.display = 'none';
+                if (qualitySection) qualitySection.style.display = 'none';
                 if (waitingMessageEl) {
                     waitingMessageEl.innerHTML = '<p>60프레임 이상 필요 (자동 리셋됨)</p>';
                     waitingMessageEl.style.display = 'block';
@@ -345,6 +424,14 @@
         document.getElementById('exercise-select').addEventListener('change', (e) => {
             selectedExercise = e.target.value;
             document.getElementById('current-exercise').textContent = selectedExercise;
+
+            // Send selected exercise to server
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'exercise_selection',
+                    exercise: selectedExercise
+                }));
+            }
         });
         
         document.getElementById('start-btn').addEventListener('click', () => {
@@ -369,7 +456,15 @@
             document.getElementById('stop-btn').disabled = false;
             document.getElementById('exercise-select').disabled = true;
             document.getElementById('pose-status').textContent = '녹화 시작 - 포즈를 취해주세요';
-            
+
+            // 선택한 운동을 서버에 전송
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'exercise_selection',
+                    exercise: selectedExercise
+                }));
+            }
+
             // 프레임 전송 시작
             frameInterval = setInterval(() => {
                 if (video.videoWidth > 0 && isRunning) {
@@ -410,21 +505,30 @@
             stopRecording();
             // 버퍼 리셋 요청
             fetch('http://localhost:8002/reset');
-            
+
+            // 품질 데이터 초기화
+            lastQualityData = null;
+
             // UI 리셋
             document.getElementById('pose-status').textContent = '리셋 완료 - 운동을 선택하고 시작을 눌러주세요';
-            
-            const selectedExerciseScoreEl = document.getElementById('selected-exercise-score');
-            const comparisonEl = document.getElementById('comparison');
+
+            const selectedExerciseDisplayEl = document.getElementById('selected-exercise-display');
             const waitingMessageEl = document.getElementById('waiting-message');
-            
-            if (selectedExerciseScoreEl) selectedExerciseScoreEl.style.display = 'none';
-            if (comparisonEl) comparisonEl.style.display = 'none';
+            const qualitySection = document.getElementById('quality-section');
+            const cameraWarning = document.getElementById('camera-warning');
+            const jointListEl = document.getElementById('joint-list');
+
+            if (selectedExerciseDisplayEl) selectedExerciseDisplayEl.style.display = 'none';
+            if (qualitySection) qualitySection.style.display = 'none';
+            if (cameraWarning) cameraWarning.style.display = 'none';
             if (waitingMessageEl) {
                 waitingMessageEl.innerHTML = '<p>준비되면 시작 버튼을 눌러주세요.</p>';
                 waitingMessageEl.style.display = 'block';
             }
-            
+            if (jointListEl) {
+                jointListEl.innerHTML = '<p>동작 인식 후 관절별 품질이 표시됩니다.</p>';
+            }
+
             // 버퍼 카운트 리셋
             const bufferCountEl = document.getElementById('buffer-count');
             const bufferStatusEl = document.getElementById('buffer-status');

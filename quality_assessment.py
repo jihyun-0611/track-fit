@@ -192,6 +192,11 @@ class QualityAssessment:
                 # Filter response signal to only include class prototypes
                 proto_indices = torch.tensor(class_prototypes, device=R.device)
                 R = R[:, proto_indices]  # (V*V, n_class_proto)
+
+                # NOTE: Do NOT re-normalize to preserve original differences
+                # When model outputs are already very uniform (std ~0.0002),
+                # re-normalization makes them even more uniform
+
                 used_prototypes = class_prototypes
 
         # Get top-K values for each joint pair (row)
@@ -276,6 +281,9 @@ class QualityAssessment:
                 # Filter response signal to only include class prototypes
                 proto_indices = torch.tensor(class_prototypes, device=R.device)
                 R = R[:, proto_indices]  # (V*V, n_class_proto)
+
+                # NOTE: Do NOT re-normalize to preserve original differences
+                # Re-normalization makes already-similar values even more uniform
 
         n_proto = R.shape[1]
 
