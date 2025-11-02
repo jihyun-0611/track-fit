@@ -1,0 +1,24 @@
+# @package _global_
+
+# Debug configuration: Quick testing with minimal epochs
+# Usage: python train_hydra.py experiment=debug
+
+# Use main config
+mmcv_config: configs/exercise/j.py
+
+# Override training parameters for quick testing
+training:
+  epochs: 2
+  validate: true
+  test_best: false
+  test_last: false
+  optimizer:
+    lr: 0.001
+
+# Custom work directory - Use Hydra's timestamped output directory
+experiment:
+  name: debug
+  work_dir: ${hydra:run.dir}
+
+# Use pretrained model
+pretrained: ${project.checkpoint_dir}/finegym_j/best_top1_acc_epoch_141.pth

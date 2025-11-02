@@ -1,0 +1,33 @@
+# Default training configuration
+# Override with: training.epochs=100
+
+# Basic training parameters
+epochs: 80
+batch_size: 4
+workers: 2
+
+# Optimizer settings (will override mmcv config)
+optimizer:
+  type: SGD
+  lr: 0.001
+  momentum: 0.9
+  weight_decay: 0.001
+  nesterov: true
+
+# Learning rate schedule
+lr_config:
+  policy: CosineAnnealing
+  min_lr: 0
+  by_epoch: false
+
+# Evaluation settings
+evaluation:
+  interval: 1
+  save_best_metric: top1_acc
+
+# Checkpoint settings
+checkpoint:
+  interval: 5
+
+# Logging
+log_interval: 10

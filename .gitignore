@@ -3,4 +3,16 @@ __pycache__/
 weight/
 data/
 notebooks/
-checkpoint/
+checkpoints/
+.idea/
+mmpose/
+mmdetection/
+.env
+work_dirs/
+
+# Hydra outputs
+outputs/
+.hydra/
+multirun/
+hydra_runs/
+hydra_multirun/
