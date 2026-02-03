@@ -169,7 +169,7 @@ class UniformSampleFrames:
             coef = np.array([transitional[i] for i in idxes_int])
             idxes = (coef * idxes_int + (1 - coef) * idxes).astype(np.float32)
 
-        results['frame_idx'] = idxes.astype(np.int64)
+        results['frame_inds'] = idxes.astype(np.int64)
         results['clip_len'] = self.clip_len
         results['frame_interval'] = None
         results['num_clips'] = self.num_clips

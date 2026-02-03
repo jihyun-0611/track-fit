@@ -17,32 +17,32 @@ class PoseDecode:
     """
     Load and decode pose with given indices.
 
-    Required keys are "keypoint", "frame_idxes" (optional), "keypoint_score" (optional), 
+    Required keys are "keypoint", "frame_inds" (optional), "keypoint_score" (optional), 
     added or modified keys are "keypoint", "keypoint_score" (if applicable).
     """
     @staticmethod
-    def _load_kp(kp, frame_idxes):
-        return kp[:, frame_idxes].astype(np.float32)
+    def _load_kp(kp, frame_inds):
+        return kp[:, frame_inds].astype(np.float32)
     
     @staticmethod
-    def _load_kpscore(kpscore, frame_idxes):
-        return kpscore[:, frame_idxes].astype(np.float32)
+    def _load_kpscore(kpscore, frame_inds):
+        return kpscore[:, frame_inds].astype(np.float32)
     
     def __call__(self, results):
-        if 'frame_idx' not in results:
-            results['frame_idx'] = np.arange(results['total_frames'])
+        if 'frame_inds' not in results:
+            results['frame_inds'] = np.arange(results['total_frames'])
         
-        if results['frame_idx'].ndim != 1:
-            results['frame_idx'] = np.squeeze(results['frame_idx'])
+        if results['frame_inds'].ndim != 1:
+            results['frame_inds'] = np.squeeze(results['frame_inds'])
         
         offset = results.get('offset', 0)
-        frame_idxes = results['frame_idx'] + offset
+        frame_inds = results['frame_inds'] + offset
 
         if 'keypoint_score' in results:
-            results['keypoint_score'] = self._load_kpscore(results['keypoint_score'], frame_idxes)
+            results['keypoint_score'] = self._load_kpscore(results['keypoint_score'], frame_inds)
         
         if 'keypoint' in results:
-            results['keypoint'] = self._load_kp(results['keypoint'], frame_idxes)
+            results['keypoint'] = self._load_kp(results['keypoint'], frame_inds)
 
         return results
     
