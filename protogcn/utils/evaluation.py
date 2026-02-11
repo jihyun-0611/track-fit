@@ -77,7 +77,7 @@ def mean_class_accuracy(scores, labels):
     cls_hit = np.diag(cf_mat)
 
     mean_class_acc = np.mean(
-        [hit / cnt if cnt else 0.0 for cnt, hit in zip(cls_cnt, cls_cnt)]
+        [hit / cnt if cnt else 0.0 for cnt, hit in zip(cls_cnt, cls_hit)]
     )
     return mean_class_acc
 
@@ -155,7 +155,7 @@ def binary_precision_recall_curve(y_score, y_true):
     desc_score_indices = np.argsort(y_score, kind='mergesort')[::-1]
     y_score = y_score[desc_score_indices]
     y_true = y_true[desc_score_indices]
-    # There may be ties in values, therefore find the `idstinct_value_inds`
+    # There may be ties in values, therefore find the `distinct_value_inds`
     distinct_value_inds = np.where(np.diff(y_score))[0]
     threshold_inds = np.r_[distinct_value_inds, y_true.size-1]
     # accumulate the true positives with decreasing threshold
