@@ -140,7 +140,7 @@ class Recognizer(nn.Module):
 
             if score_ext:
                 w = self.cls_head.fc_cls.weight # (num_classes, C)
-                b = self.cls_head.fc_cls.bais
+                b = self.cls_head.fc_cls.bias
                 x = torch.einsum('nmctv, oc->nmotv', x, w)
                 if b is not None:
                     x = x+ b[..., None, None]
@@ -152,7 +152,7 @@ class Recognizer(nn.Module):
         cls_score = cls_score.reshape(bs, nc, cls_score.shape[-1]) # (bs, nc, num_classes)
 
         if 'average_clips' not in self.test_cfg:
-            self.test_cfg['average_clips'] = 'probs'
+            self.test_cfg['average_clips'] = 'prob'
 
         cls_score = self.average_clip(cls_score)
 

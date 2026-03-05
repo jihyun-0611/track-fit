@@ -199,7 +199,7 @@ def main():
         logger.info(f'Resumed from epoch {start_epoch}')
     elif args.load_from:
         model.load_state_dict(torch.load(args.load_from, map_location='cpu')['state_dict'])
-        logger(f'Loaded from {args.load_from}')
+        logger.info(f'Loaded from {args.load_from}')
 
     #=============================== Training ===============================
     eval_cfg = cfg.get('evaluation', {})
@@ -239,7 +239,7 @@ def main():
             # Log
             if (i+1) % log_interval == 0:
                 avg_loss = log_vars_sum.get('loss', 0) / num_samples
-                avg_top1 = log_vars_sum.get('top1_loss', 0) / num_samples
+                avg_top1 = log_vars_sum.get('top1_acc', 0) / num_samples
                 pbar.set_postfix(loss=f'{avg_loss:.4f}', top1=f'{avg_top1:.4f}', lr=f'{lr:.6f}')
                 logger.info(f'Epoch [{epoch+1}][{i+1}/{len(train_loader)}] '
                             f'lr: {lr:.6f}, loss: {avg_loss:.4f}, top1: {avg_top1:.4f}')
@@ -302,4 +302,4 @@ def main():
 
 if __name__ == '__main__':
     main()
-    
+

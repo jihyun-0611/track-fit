@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 
-from losses import ClassSpecificContrastiveLoss
-from utils import top_k_accuracy
+from ..losses import ClassSpecificContrastiveLoss
+from ..utils import top_k_accuracy
 
 class Head(nn.Module):
     def __init__(self,
