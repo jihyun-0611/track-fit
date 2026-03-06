@@ -98,7 +98,7 @@ class ClassSpecificContrastiveLoss(nn.Module):
 
         return score_cl
     
-    def foward(self, feature, lbl, logit):
+    def forward(self, feature, lbl, logit):
         # batch, h_channel
         feature = self.cl_fc(feature)
         # batch, num_classes -> batch
