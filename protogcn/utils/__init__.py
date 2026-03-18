@@ -1,3 +1,3 @@
-from graph import *
-from evaluation import *
-from utils import *
+from .graph import *
+from .evaluation import *
+from .utils import *
