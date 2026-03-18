@@ -68,3 +68,28 @@ def auto_mix2(results_list, weights=None):
 
     return preds
 
+
+def remap_model_keys(state_dict):
+    """Remap old checkpoint key names to current model key names."""
+    mapping = [
+        ('gcn.pre.',   'mte.h_last.'),
+        ('gcn.conv1.', 'mte.h_q.'),
+        ('gcn.conv2.', 'mte.h_k.'),
+        ('gcn.post.',  'mte.h_l.'),
+        ('gcn.down.',  'mte.residual.'),
+        ('gcn.bn.',    'mte.bn.'),
+        ('gcn.A',      'mte.A'),
+        ('gcn.alpha',  'mte.alpha'),
+        ('gcn.beta',   'mte.beta'),
+        ('tcn.add_coeff', 'tcn.add_coef'),
+        ('prn.query_matrix.', 'prn.query.'),
+        ('prn.memory_matrix.', 'prn.memory.'),
+    ]
+    new_sd = {}
+    for k, v in state_dict.items():
+        new_k = k
+        for old, new in mapping:
+            new_k = new_k.replace(old, new)
+        new_sd[new_k]= v
+    return new_sd
+

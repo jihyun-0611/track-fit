@@ -1,0 +1,5 @@
+# @package _global_
+name: finetuninig
+total_epochs: 60
+optimizer:
+  lr: 0.001

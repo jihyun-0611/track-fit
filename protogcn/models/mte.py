@@ -96,7 +96,7 @@ class MTE(nn.Module):
         # A_intra 
         # H_Q(H_K)^T
         # N K C' 1 V * N K C' 1 V = N K 1 1 V V
-        A_intra = torch.einsum('nkctv, nkctW -> nktvw', h_q, h_k)[:, :, None]
+        A_intra = torch.einsum('nkctv, nkctw -> nktvw', h_q, h_k)[:, :, None]
         A_intra = self.softmax(A_intra)
         A_intra = A_intra * self.beta[0]
 

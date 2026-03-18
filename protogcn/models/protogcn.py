@@ -3,8 +3,8 @@ import torch
 import torch.nn as nn
 
 from ..utils import Graph
-from mte import MTE
-from mstcn import TCN, MSTCN
+from .mte import MTE
+from .mstcn import TCN, MSTCN
 
 EPS = 1e-4
 
@@ -36,7 +36,7 @@ class PrototypeReconstructionNetwork(nn.Module):
 
     '''
     def __init__(self, dim, n_prototype=100, dropout=0.1):
-        super.__init__()
+        super().__init__()
         self.query = nn.Linear(dim, n_prototype, bias=False)
         self.memory = nn.Linear(n_prototype, dim, bias=False)
         self.softmax = nn.Softmax(dim=-1)
@@ -100,10 +100,10 @@ class ProtoGCN(nn.Module):
         inflate_times = 0
         down_times = 0
         for i in range(2, num_stages+1):
-            stride = 1 + (i in num_stages)
+            stride = 1 + (i in down_stages)
             in_channels = base_channels
             if i in inflate_stages:
-                inflate_stages += 1
+                inflate_times += 1
             out_channels = int(self.base_channels * self.ch_ratio ** inflate_times + EPS)
             base_channels = out_channels
             modules.append(GCNBlock(in_channels, out_channels, A.clone(), stride))
@@ -122,11 +122,11 @@ class ProtoGCN(nn.Module):
         self.relu = nn.ReLU(inplace=True)
 
         dim = 384 # base_channels * 4
-        self.prn = PrototypeReconstructionNetwork(dim, self.num_prototype)
+        self.prn = PrototypeReconstructionNetwork(dim, num_prototype)
 
     def init_weights(self):
         if self.pretrained is not None:
-            self.load_state_dict(torch.load(self.pretrained), strict=False)
+            self.load_state_dict(torch.load(self.pretrained, weights_only=False), strict=False)
 
     def forward(self, x):
         N, M, T, V, C = x.size()

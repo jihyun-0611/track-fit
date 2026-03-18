@@ -1,0 +1,7 @@
+# @package _global_
+name: exercise_freeze
+total_epochs: 30
+freeze_backbone: true
+optimizer:
+  lr: 0.01
+

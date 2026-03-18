@@ -1,5 +1,15 @@
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+import importlib
 
+
+_SUBMODULES = ['sampling', 'formatting', 'pose_related']
+
+def _lookup(name):
+    for mod_name in _SUBMODULES:
+        mod = importlib.import_module(f'.{mod_name}', package=__package__)
+        if hasattr(mod, name):
+            return getattr(mod, name)
+    raise KeyError(f"Unknown transform type: '{name}'")
 
 class Compose:
     """
@@ -16,6 +26,10 @@ class Compose:
         for transform in transforms:
             if callable(transform):
                 self.transforms.append(transform)
+            elif isinstance(transform, Mapping):
+                cfg = dict(transform)
+                t_type=cfg.pop('type')
+                self.transforms.append(_lookup(t_type)(**cfg))
             else:
                 raise TypeError(f"transform must be callable, "
                                 f"but got {type(transform)}")

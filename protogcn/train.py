@@ -1,8 +1,12 @@
+import hydra
+from omegaconf import DictConfig, OmegaConf
+from dotenv import load_dotenv
+load_dotenv()
+
 import os
 import os.path as osp
 import time 
 import random
-import argparse
 import logging
 import math
 from collections import OrderedDict
@@ -17,31 +21,7 @@ from .datasets import build_dataloader, PoseDataset
 from .models import Recognizer
 from .models import ProtoGCN
 from .models import Head
-from .utils import get_logger, dump_file
-
-
-def parse_args():
-    parser = argparse.ArgumentParser(description='Train ProtoGCN')
-    parser.add_argument('config', help='train config file path')
-    parser.add_argument('--validate', action='store_true')
-    parser.add_argument('--test-last', action='store_true')
-    parser.add_argument('--test-best', action='store_true')
-    parser.add_argument('--seed', type=int, default=None)
-    parser.add_argument('--deterministic', action='store_true')
-    parser.add_argument('--resume-from', type=str, default=None)
-    parser.add_argument('--load-from', type=str, default=None)
-    parser.add_argument('--work-dir', type=str, default=None)
-    parser.add_argument('--compile', action='store_true')
-    return parser.parse_args()
-
-
-def load_config(config_path):
-    """Load config from Python file"""
-    import importlib.util
-    spec = importlib.util.spec_from_file_location("config", config_path)
-    config = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(config)
-    return {k: getattr(config, k) for k in dir(config) if not k.startswith('_')}
+from .utils import get_logger, dump_file, remap_model_keys
 
 
 def set_random_seed(seed, deterministic=False):
@@ -79,8 +59,8 @@ def validate(model, val_loader, val_dataset, eval_cfg, logger):
     
     eval_results = val_dataset.evaluate(
         results,
-        metrics=eval_cfg.get('metrics', ['top_k_accuracy', 'mean_class_accuracy']),
-        metric_options={'top_k_accuracy': {'topk': eval_cfg.get('topk', (1, 5))}}
+        metrics=list(eval_cfg.get('metrics', ['top_k_accuracy', 'mean_class_accuracy'])),
+        metric_options={'top_k_accuracy': {'topk': tuple(eval_cfg.get('topk', (1, 5)))}}
     )
 
     for name, val in eval_results.items():
@@ -98,12 +78,10 @@ def save_checkpoint(model, optimizer, epoch, work_dir, filename, **kwargs):
     }, osp.join(work_dir, filename))
 
 
-def main():
-    args = parse_args()
-    cfg = load_config(args.config)
-
+@hydra.main(config_path="../configs", config_name="config", version_base=None)
+def main(cfg: DictConfig):
     # Work directory
-    work_dir = args.work_dir or cfg.get('work_dir') or osp.join('./work_dirs', osp.splitext(osp.basename(args.config))[0])
+    work_dir = cfg.get('work_dir') or osp.join('./work_dirs', cfg.get('name', 'experiment'))
     os.makedirs(work_dir, exist_ok=True)
 
     # Logger
@@ -112,8 +90,8 @@ def main():
     logger.addHandler(logging.FileHandler(osp.join(work_dir, f'{timestamp}.log')))
 
     # Seed
-    seed = args.seed if args.seed is not None else np.random.randint(2**31)
-    set_random_seed(seed, args.deterministic)
+    seed = cfg.seed if cfg.seed is not None else np.random.randint(2**31)
+    set_random_seed(seed, cfg.deterministic)
     logger.info(f'Seed: {seed}')
 
     #==================================Dataset================================
@@ -161,13 +139,21 @@ def main():
         test_cfg=model_cfg.get('test_cfg')
     ).cuda()
 
-    if args.compile and hasattr(torch, 'compile'):
+    if cfg.compile and hasattr(torch, 'compile'):
         model = torch.compile(model)
+
+    #========================= Freeze Backbone ================================
+    if cfg.get('freeze_backbone', False):
+        for param in model.backbone.parameters():
+            param.requires_grad = False
+        frozen = sum(p.numel() for p in model.backbone.parameters())
+        trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        logger.info(f'Backbone frozen | frozen: {frozen:,}, trainable: {trainable:,}')
 
     #========================= Optimizer & Scheduler ========================
     opt_cfg = cfg['optimizer']
     optimizer = optim.SGD(
-        model.parameters(),
+        filter(lambda p: p.requires_grad, model.parameters()),
         lr=opt_cfg.get('lr', 0.1),
         momentum=opt_cfg.get('momentum', 0.9),
         weight_decay=opt_cfg.get('weight_decay', 0.0005),
@@ -182,14 +168,14 @@ def main():
     #================================ Resume =================================
     start_epoch, best_score, best_epoch, current_iter = 0, 0, 0, 0
 
-    resume_from = args.resume_from
+    resume_from = cfg.resume_from
     if resume_from is None and cfg.get('auto_resume', True):
         latest = osp.join(work_dir, 'latest.pth')
         if osp.exists(latest):
             resume_from = latest
 
     if resume_from:
-        ckpt = torch.load(resume_from, map_location='cpu')
+        ckpt = torch.load(resume_from, map_location='cpu', weights_only=False)
         model.load_state_dict(ckpt['state_dict'])
         optimizer.load_state_dict(ckpt['optimizer'])
         start_epoch = ckpt['epoch']
@@ -197,9 +183,12 @@ def main():
         best_score = ckpt.get('best_score', 0)
         best_epoch = ckpt.get('best_epoch', 0)
         logger.info(f'Resumed from epoch {start_epoch}')
-    elif args.load_from:
-        model.load_state_dict(torch.load(args.load_from, map_location='cpu')['state_dict'])
-        logger.info(f'Loaded from {args.load_from}')
+    elif cfg.load_from:
+        ckpt = torch.load(cfg.load_from, map_location='cpu', weights_only=False)['state_dict']
+        ckpt = remap_model_keys(ckpt)
+        ckpt = {k: v for k, v in ckpt.items() if not k.startswith('cls_head.')}
+        missing, unexpected = model.load_state_dict(ckpt, strict=False)
+        logger.info(f'Loaded from {cfg.load_from} | missing: {len(missing)}, unexpected: {len(unexpected)}')
 
     #=============================== Training ===============================
     eval_cfg = cfg.get('evaluation', {})
@@ -246,7 +235,7 @@ def main():
                 log_vars_sum, num_samples = {}, 0
         
         # Validataion
-        if args.validate and (epoch+1) % eval_interval == 0:
+        if cfg.validate and (epoch+1) % eval_interval == 0:
             eval_results = validate(model, val_loader, val_dataset, eval_cfg, logger)
 
             if eval_results.get('top1_acc', 0) > best_score:
@@ -269,7 +258,7 @@ def main():
 
 
     #=============================== Final Test =================================
-    if args.test_last or args.test_best:
+    if cfg.test_last or cfg.test_best:
         eval_cfg = cfg.get('evaluation', {})
         test_cfg = data_cfg.get('test', data_cfg['val'])
         test_dataset = PoseDataset(
@@ -281,21 +270,21 @@ def main():
         )
         test_loader = build_dataloader(
             test_dataset,
-            batch_size=data_cfg.get('test_dataloader', {}).get('videos_per_gpu', 1),
+            batch_size=data_cfg.get('test_dataloader', {}).get('video_per_gpu', 1),
             num_workers=data_cfg.get('workers_per_gpu', 4),
             shuffle=False
         )
 
-        if args.test_last and osp.exists(osp.join(work_dir, 'latest.pth')):
-            model.load_state_dict(torch.load(osp.join(work_dir, 'latest.pth'))['state_dict'])
+        if cfg.test_last and osp.exists(osp.join(work_dir, 'latest.pth')):
+            model.load_state_dict(torch.load(osp.join(work_dir, 'latest.pth'), weights_only=False)['state_dict'])
             results = validate(model, test_loader, test_dataset, eval_cfg, logger)
             dump_file(results, osp.join(work_dir, 'last_pred.pkl'))
         
-        if args.test_best:
+        if cfg.test_best:
             best_ckpts = [f for f in os.listdir(work_dir) if 'best' in f and f.endswith('.pth')]
             if best_ckpts:
                 best_ckpt = max(best_ckpts, key=lambda x: int(x.split('epoch_')[-1].replace('.pth', '')) if 'epoch_' in x else 0)
-                model.load_state_dict(torch.load(osp.join(work_dir, best_ckpt))['state_dict'])
+                model.load_state_dict(torch.load(osp.join(work_dir, best_ckpt), weights_only=False)['state_dict'])
                 results = validate(model, test_loader, test_dataset, eval_cfg, logger)
                 dump_file(results, osp.join(work_dir, 'best_pred.pkl'))
 

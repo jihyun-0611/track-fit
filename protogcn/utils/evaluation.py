@@ -54,7 +54,7 @@ def confusion_matrix(y_pred, y_real, normalize=None):
             confusion_mat = (
                 confusion_mat / confusion_mat.sum(axis=0, keepdims=True)
             )
-        elif normalize == 'true':
+        elif normalize == 'all':
             confusion_mat = (
                 confusion_mat / confusion_mat.sum()
             )

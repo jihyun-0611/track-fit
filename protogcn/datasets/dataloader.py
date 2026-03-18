@@ -95,6 +95,7 @@ def build_dataloader(dataset,
     init_fn = partial(
         worker_init_fn,
         num_workers=num_workers,
+        rank=0,
         seed=seed
     ) if seed is not None else None
 

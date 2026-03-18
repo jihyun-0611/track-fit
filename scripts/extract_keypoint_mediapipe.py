@@ -198,7 +198,7 @@ def main():
         return
 
     data_dir = Path(args.data_dir)
-    csv_path = data_dir / "filter_meta.csv"
+    csv_path = data_dir / "meta.csv"
 
     if not csv_path.exists():
         print(f"Error: {csv_path} 파일을 찾을 수 없습니다.")

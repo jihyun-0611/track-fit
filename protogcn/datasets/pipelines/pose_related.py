@@ -5,8 +5,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from scipy.stats import mode as get_mode
 
-from compose import Compose
-from formatting import Rename
+from .compose import Compose
+from .formatting import Rename
 
 import sys
 
@@ -152,7 +152,7 @@ class RandomRot:
         self.theta = theta
 
     def _rot3d(self, theta):
-        cos, sin = np.cos(theta), np.cos(theta)
+        cos, sin = np.cos(theta), np.sin(theta)
         rx = np.array([[1, 0, 0], [0, cos[0], sin[0]], [0, -sin[0], cos[0]]])
         ry = np.array([[cos[1], 0, -sin[1]], [0, 1, 0], [sin[1], 0, cos[1]]])
         rz = np.array([[cos[2], sin[2], 0], [-sin[2], cos[2], 0], [0, 0, 1]])
@@ -226,7 +226,7 @@ class Part_Drop:
         skeleton = results['keypoint']
         p = self.p
 
-        if random.random < p:
+        if random.random() < p:
             left_hand = [4, 5, 6 ,7, 22, 21]
             left_leg = [12, 13, 14, 15]
             right_hand = [8, 9, 10, 11, 24, 23]

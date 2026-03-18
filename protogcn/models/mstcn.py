@@ -47,7 +47,7 @@ class MSTCN(nn.Module):
                  in_channels,
                  out_channels,
                  mid_channels=None, 
-                 num_joints=20,
+                 num_joints=25,
                  dropout=0,
                  # (kernel, dilation), (max pooling, kernel), (1x1 conv)
                  ms_cfg=[(3, 1), (3, 2), (3, 3), (3, 4), ('max', 3), '1x1'],
@@ -80,7 +80,7 @@ class MSTCN(nn.Module):
             b_out_channel = rem_mid_channels if i == 0 else mid_channels
             if cfg == '1x1':
                 branches.append(
-                    nn.Conv2d(in_channels, b_out_channel, kernel_size=1, stride=1)
+                    nn.Conv2d(in_channels, b_out_channel, kernel_size=1, stride=(stride, 1))
                 )
                 continue
             assert isinstance(cfg, tuple)
@@ -100,7 +100,7 @@ class MSTCN(nn.Module):
                     nn.Conv2d(in_channels, b_out_channel, kernel_size=1),
                     nn.BatchNorm2d(b_out_channel),
                     self.relu,
-                    TCN(b_out_channel, kernel_size=cfg[0], stride=stride, dilation=cfg[1])
+                    TCN(b_out_channel, b_out_channel, kernel_size=cfg[0], stride=stride, dilation=cfg[1])
                 )
             )
 
