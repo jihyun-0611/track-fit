@@ -1,0 +1,39 @@
+video_per_gpu: 4
+workers_per_gpu: 2
+test_dataloader:
+  video_per_gpu: 1
+train:
+  ann_file: ${oc.env:DATASET_PATH}
+  split: train
+  pipeline:
+    - type: UniformSampleFrames
+      clip_len: 100
+    - type: PoseDecode
+    - type: GenSkeFeat
+      dataset: coco_new
+      feats: [j]
+    - type: FormatGCNInput
+      num_person: 1
+    - type: Collect
+      keys: [keypoint, label]
+      meta_keys: []
+    - type: ToTensor
+      keys: [keypoint]
+val:
+  ann_file: ${oc.env:DATASET_PATH}
+  split: val
+  pipeline:
+    - type: UniformSampleFrames
+      clip_len: 100
+      num_clips: 1
+    - type: PoseDecode
+    - type: GenSkeFeat
+      dataset: coco_new
+      feats: [j]
+    - type: FormatGCNInput
+      num_person: 1
+    - type: Collect
+      keys: [keypoint, label]
+      meta_keys: []
+    - type: ToTensor
+      keys: [keypoint]

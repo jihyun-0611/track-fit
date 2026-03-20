@@ -1,6 +1,6 @@
 defaults:
   - model: protogcn
-  - data: exercise
+  - dataset: exercise
   - _self_
   - optional experiment: finetuning
 
