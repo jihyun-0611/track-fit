@@ -2,7 +2,7 @@ from collections.abc import Mapping, Sequence
 import importlib
 
 
-_SUBMODULES = ['sampling', 'formatting', 'pose_related']
+_SUBMODULES = ['sampling', 'formatting', 'pose_related', 'augmentations']
 
 def _lookup(name):
     for mod_name in _SUBMODULES:

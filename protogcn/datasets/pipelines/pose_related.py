@@ -181,7 +181,7 @@ class RandomRot:
 
         results['keypoint'] = np.einsum('ab,mtvb->mtva', rot_mat, skeleton)
         return results
-    
+
 
 class Spatial_Flip:
     """Flip the skeleton. """

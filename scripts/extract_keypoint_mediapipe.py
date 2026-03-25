@@ -93,7 +93,7 @@ def process_video(frame_provider, min_detection_confidence=0.5,
 
     with mp_pose.Pose(
         static_image_mode=False,
-        model_complexity=1,
+        model_complexity=2,
         smooth_landmarks=True,
         min_detection_confidence=min_detection_confidence,
         min_tracking_confidence=min_tracking_confidence
@@ -219,8 +219,8 @@ def main():
     print(f"총 {len(video_paths)}개의 비디오 데이터")
 
 
-    json_output_dir = data_dir / "keypoints_mediapipe" / "json"
-    pickle_output_dir = data_dir / "keypoints_mediapipe" / "pickle"
+    json_output_dir = data_dir / "keypoints" / "json"
+    pickle_output_dir = data_dir / "keypoints" / "pickle"
 
     json_output_dir.mkdir(parents=True, exist_ok=True)
     pickle_output_dir.mkdir(parents=True, exist_ok=True)

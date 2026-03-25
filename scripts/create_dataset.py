@@ -241,7 +241,7 @@ def main():
         return
 
     data_dir = Path(args.data_dir)
-    kpt_dir = data_dir / "keypoints_mediapipe"
+    kpt_dir = data_dir / "keypoints"
     csv_path = data_dir / "meta.csv"
     output_path = data_dir / "exercise_dataset.pkl"
 
