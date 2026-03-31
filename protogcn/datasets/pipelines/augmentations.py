@@ -146,3 +146,119 @@ class Flip:
         return repr_str
 
 
+class RandomJointMask:
+    """Randomly mask (set to 0) specific joints throughout the entire sequence.
+
+    Args:
+        chance (float | list[float]): the probability of setting a keypoint 
+                                    to invalid or a list of probabilities for each keypoint.
+            If it is a float, the same probability is applied to all joints;
+            if it is a list, different probabilities are applied to each joint.
+        p (flaot): probability of applying the transform. Defaults to 1.0.
+    
+    Required keys: 'keypoint', 'keypoint_score'.
+    """
+    def __init__(self, chance, p=1.0):
+        self.chance = chance
+        self.p = p
+    
+    def __call__(self, results):
+        if np.random.rand() >= self.p:
+            return results
+        
+        keypoint = results['keypoint'] # (M, T, V, 2)
+        keypoint_score = results['keypoint_score'] # (M, T, V)
+        num_joints = keypoint.shape[2]
+
+        for i in range(num_joints):
+            chance = self.chance if isinstance(self.chance, float) else self.chance[i]
+            if np.random.rand() < chance:
+                keypoint[:, :, i, :] = 0.0
+                keypoint_score[:, :, i] = 0.0
+        
+        results['keypoint'] = keypoint
+        results['keypoint_score'] = keypoint_score
+        return results
+    
+    def __repr__(self):
+        return f'{self.__class__.__name__}(chance={self.chance}, p={self.p})'
+    
+
+class SpecificJointMask:
+    """Set the specified keypoints to invalid.
+
+    Args:
+        joints (list[int]): The indeces of joints that should be set to invalid.
+        p (float): probability of applying the transform. Defaults to 1.0.
+    
+    Required keys: 'keypoint', 'keypoint_score'.
+    
+    """
+    def __init__(self, joints, p=1.0):
+        self.joints = joints
+        self.p = p
+
+    def __call__(self, results):
+        if np.random.rand() > self.p:
+            return results
+        
+        results['keypoint'][:, :, self.joints, :] = 0.0
+        results['keypoint_score'][:, :, self.joints] = 0.0
+        return results
+    
+    def __repr__(self):
+        return f'{self.__class__.__name__}(joints={self.joints}, p={self.p})'
+        
+
+class InterpolateOcclusions:
+    """Interpolates occluded keypoints with linear interpolation.
+    Only interpolates between two valid keypoints (no extrapolating).
+
+    Args:
+        p (float): probability of applying the transform. Defaults to 1.0.
+
+    Required keys: 'keypoint', 'keypoint_score'.
+
+    """
+    def __init__(self, p=1.0):
+        self.p = p
+
+    def __call__(self, results):
+        from scipy import interpolate as sci_interp
+
+        if np.random.rand() >= self.p:
+            return results
+        
+        keypoint = results['keypoint'] # (M, T, V, 2)
+        keypoint_score = results['keypoint_score'] # (M, T, V)
+        M, T, V, _ = keypoint.shape
+        frame_ids = np.arange(T)
+
+        for m in range(M):
+            for k in range(V):
+                score = keypoint_score[m, :, k] # (T,)
+                valid = score > 0
+                valid_ids = frame_ids[valid]
+
+                if valid_ids.size < 2:
+                    continue
+
+                kp = keypoint[m, :, k, :] # (T, 2)
+                f = sci_interp.interp1d(valid_ids, kp[valid], axis=0)
+
+                inter_mask = ~valid
+                inter_mask[:valid_ids[0]] = False
+                inter_mask[valid_ids[-1]:] = False
+                interp_ids = frame_ids[inter_mask]
+
+                if interp_ids.size == 0:
+                    continue
+
+                keypoint[m, interp_ids, k, :] = f(interp_ids)
+
+        results['keypoint'] = keypoint
+        results['keypoint_score'] = keypoint_score
+        return results
+    
+    def __repr__(self):
+        return f'{self.__class__.__name__}(p={self.p})'
