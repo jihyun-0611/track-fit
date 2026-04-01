@@ -262,3 +262,48 @@ class InterpolateOcclusions:
     
     def __repr__(self):
         return f'{self.__class__.__name__}(p={self.p})'
+
+
+class TemporalOcclusion:
+    """Randomly mask consecutive frames within a 100-frame window.
+    
+    Args:
+        min_frames (int): Mininum number of consecutive frames to mask.
+        max_frames (int): Maximum number of consecutive frames to mask. 
+        num_segments (int): Number of occlusion segments to apply.
+        p (float): Probability of applying the transform.
+    
+    Required keys: 'keypoint', 'keypoint_score'.
+    """
+    def __init__(self, min_frames=25, max_frames=100, num_segments=1, p=0.5):
+        self.min_frames = min_frames
+        self.max_frames = max_frames
+        self.num_segments = num_segments
+        self.p = p
+    
+    def __call__(self, results):
+        if np.random.rand() >= self.p:
+            return results
+        
+        keypoint = results['keypoint'] # (M, T, V, 2)
+        keypoint_score = results['keypoint_score'] # (M, T, V)
+        T = keypoint.shape[1]
+
+        for _ in range(self.num_segments):
+            length = np.random.randint(self.min_frames, min(T, self.max_frames) + 1)
+            start = np.random.randint(0, T - length + 1)
+            end = start + length
+
+            keypoint[:, start:end, :, :] = 0.0
+            keypoint_score[:, start:end, :] = 0.0
+        
+        results['keypoint'] = keypoint
+        results['keypoint_score'] = keypoint_score
+        return results
+
+    def __repr__(self):
+        return (f'{self.__class__.__name__}('
+                f'min_frames={self.min_frames}, '
+                f'max_frames={self.max_frames}, '
+                f'num_segments={self.num_segments}, '
+                f'p={self.p})')

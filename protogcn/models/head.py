@@ -11,6 +11,7 @@ class Head(nn.Module):
                  joint_cfg='coco_new',
                  weight=0.3,
                  dropout=0.0,
+                 label_smoothing=0.0,
                  init_std=0.01):
         super().__init__()
 
@@ -27,7 +28,7 @@ class Head(nn.Module):
             self.dropout = None
 
         self.fc_cls = nn.Linear(in_channels, num_classes)
-        self.ce_loss = nn.CrossEntropyLoss()
+        self.ce_loss = nn.CrossEntropyLoss(label_smoothing=label_smoothing)
 
         if joint_cfg == 'coco_new':
             n_channel = 400 # 20*20
