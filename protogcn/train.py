@@ -167,6 +167,7 @@ def main(cfg: DictConfig):
 
     #================================ Resume =================================
     start_epoch, best_score, best_epoch, current_iter = 0, 0, 0, 0
+    no_improve_epochs = 0
 
     resume_from = cfg.resume_from
     if resume_from is None and cfg.get('auto_resume', True):
@@ -182,6 +183,7 @@ def main(cfg: DictConfig):
         current_iter = ckpt.get('iter', start_epoch * len(train_loader))
         best_score = ckpt.get('best_score', 0)
         best_epoch = ckpt.get('best_epoch', 0)
+        no_improve_epochs = ckpt.get('no_improve_epochs', 0)
         logger.info(f'Resumed from epoch {start_epoch}')
     elif cfg.load_from:
         ckpt = torch.load(cfg.load_from, map_location='cpu', weights_only=False)['state_dict']
@@ -193,6 +195,7 @@ def main(cfg: DictConfig):
     #=============================== Training ===============================
     eval_cfg = cfg.get('evaluation', {})
     eval_interval = eval_cfg.get('interval', 1)
+    patience = cfg.get('early_stopping', {}).get('patience', 0)
     log_interval = cfg.get('log_config', {}).get('interval', 100)
     ckpt_interval = cfg.get('checkpoint_config', {}).get('interval', 1)
 
@@ -241,18 +244,31 @@ def main(cfg: DictConfig):
             if eval_results.get('top1_acc', 0) > best_score:
                 best_score = eval_results['top1_acc']
                 best_epoch = epoch + 1
+                no_improve_epochs = 0
                 save_checkpoint(model, optimizer, epoch+1, work_dir,
                                 f'best_top1_acc_epoch_{epoch+1}.pth',
-                                iter=current_iter, best_score=best_score, best_epoch=best_epoch)
+                                iter=current_iter, best_score=best_score, best_epoch=best_epoch,
+                                no_improve_epochs=no_improve_epochs)
                 logger.info(f'New best: {best_score:.4f} at epoch {epoch+1}')
+            else:
+                no_improve_epochs += 1
+                logger.info(f'No improvement for {no_improve_epochs}/{patience} epochs')
+                if patience > 0 and no_improve_epochs >= patience:
+                    logger.info(f'Early stopping triggered at epoch {epoch+1}')
+                    save_checkpoint(model, optimizer, epoch+1, work_dir, 'latest.pth',
+                                    iter=current_iter, best_score=best_score, best_epoch=best_epoch,
+                                    no_improve_epochs=no_improve_epochs)
+                    break
         
         # Save checkpoint
         if (epoch + 1) % ckpt_interval == 0:
             save_checkpoint(model, optimizer, epoch+1, work_dir, f'epoch_{epoch+1}.pth',
-                            iter=current_iter, best_score=best_score, best_epoch=best_epoch)
-            
+                            iter=current_iter, best_score=best_score, best_epoch=best_epoch,
+                            no_improve_epochs=no_improve_epochs)
+
         save_checkpoint(model, optimizer, epoch+1, work_dir, f'latest.pth',
-                        iter=current_iter, best_score=best_score, best_epoch=best_epoch)
+                        iter=current_iter, best_score=best_score, best_epoch=best_epoch,
+                        no_improve_epochs=no_improve_epochs)
         
     logger.info(f'Training done. Best: {best_score:.4f} at epoch {best_epoch}')
 
