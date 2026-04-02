@@ -9,6 +9,7 @@ mmpose/
 mmdetection/
 .env
 work_dirs/
+*.ipynb
 
 # Hydra outputs
 outputs/

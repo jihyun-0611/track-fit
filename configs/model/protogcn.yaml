@@ -21,3 +21,4 @@ cls_head:
   in_channels: 384
   weight: 0.2
   dropout: 0.5
+  label_smoothing: 0.1

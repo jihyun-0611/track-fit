@@ -9,7 +9,7 @@ from protogcn.apis import init_recognizer
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from quality_assessment import QualityAssessment
+from scripts.quality_assessment import QualityAssessment
 
 
 class ProtoGCNInference:
