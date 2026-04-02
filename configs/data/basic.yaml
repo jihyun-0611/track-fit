@@ -37,3 +37,21 @@ val:
       meta_keys: []
     - type: ToTensor
       keys: [keypoint]
+test:
+  ann_file: ${oc.env:DATASET_PATH}
+  split: test
+  pipeline:
+    - type: UniformSampleFrames
+      clip_len: 100
+      num_clips: 10
+    - type: PoseDecode
+    - type: GenSkeFeat
+      dataset: coco_new
+      feats: [j]
+    - type: FormatGCNInput
+      num_person: 1
+    - type: Collect
+      keys: [keypoint, label]
+      meta_keys: []
+    - type: ToTensor
+      keys: [keypoint]
