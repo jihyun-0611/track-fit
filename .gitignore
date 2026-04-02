@@ -10,6 +10,7 @@ mmdetection/
 .env
 work_dirs/
 *.ipynb
+!configs/data/
 
 # Hydra outputs
 outputs/
