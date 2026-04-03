@@ -23,7 +23,7 @@ total_epochs: 150
 optimizer: 
   lr: 0.025
   momentum: 0.9
-  weight_decay: 0.001
+  weight_decay: 0.0005
   nesterov: true
 
 lr_config:
