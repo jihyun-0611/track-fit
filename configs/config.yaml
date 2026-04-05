@@ -16,7 +16,9 @@ test_last: false
 test_best: true
 auto_resume: true
 resume_from: null
-load_from: ${oc.env:PRETRAINED,}
+ckpt_dir: ${oc.env:CHECKPOINT_DIR,}
+ckpt_file: finegym_j/best_top1_acc_epoch_141.pth
+load_from: ${ckpt_dir}/${ckpt_file}
 
 total_epochs: 150
 

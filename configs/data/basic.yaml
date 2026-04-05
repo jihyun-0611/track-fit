@@ -1,9 +1,12 @@
+data_dir: ${oc.env:DATA_DIR}
+dataset_file: exercise_dataset.pkl
+
 video_per_gpu: 16
 workers_per_gpu: 4
 test_dataloader:
   video_per_gpu: 4
 train:
-  ann_file: ${oc.env:DATASET_PATH}
+  ann_file: ${data_dir}/${dataset_file}
   split: train
   pipeline:
     - type: UniformSampleFrames
@@ -20,7 +23,7 @@ train:
     - type: ToTensor
       keys: [keypoint]
 val:
-  ann_file: ${oc.env:DATASET_PATH}
+  ann_file: ${data_dir}/${dataset_file}
   split: val
   pipeline:
     - type: UniformSampleFrames
@@ -38,7 +41,7 @@ val:
     - type: ToTensor
       keys: [keypoint]
 test:
-  ann_file: ${oc.env:DATASET_PATH}
+  ann_file: ${data_dir}/${dataset_file}
   split: test
   pipeline:
     - type: UniformSampleFrames
