@@ -96,22 +96,60 @@ def make_clips(keypoint, keypoint_score, base_name, label,
     return clips
 
 
-def create_dataset(kpt_dir, csv_path, output_path, 
-                   val_ratio=0.1, test_ratio=0.1, random_seed=42,
-                   clip_len=100, stride=50, min_frames=30,
-                   exclude_labels=None):
+def split_by_conf(annotations, val_ratio=0.1, test_ratio=0.1, random_seed=42):
+    """
+    Confidence-based split (class-stratified)
+    - Sort the average confidence scores of clips by class in descending order
+    - (1 - val_ratio - test_ratio) → train 
+    - (val_ratio + test_ratio) → val/test
+    """
+    from collections import defaultdict
+
+    class_to_clips = defaultdict(list)
+    for clip in annotations:
+        class_to_clips[clip['label']].append(clip)
     
-    df = pd.read_csv(csv_path)
+    train_ids, val_ids, test_ids = [], [], []
+    train_ratio = 1.0 - val_ratio - test_ratio
+    rng = np.random.default_rng(random_seed)
 
-    if exclude_labels:
-        df = df[~df['exercise'].isin(exclude_labels)]
+    for label, clips in class_to_clips.items():
+        for clip in clips:
+            clip['_avg_conf'] = float(clip['keypoint_score'].mean())
+        
+        clips_sorted = sorted(clips, key=lambda c: c['_avg_conf'], reverse=True)
 
-    exercise_types = sorted(df['exercise'].unique())
-    label_mapping = {ex: idx for idx, ex in enumerate(exercise_types)}
+        n = len(clips_sorted)
+        n_train = max(1, round(n * train_ratio))
 
-    print(f"클래스 수 : {len(exercise_types)}")
-    print(f"클래스 매핑: {label_mapping}")
+        train_clips = clips_sorted[:n_train]
+        lowq_clips = clips_sorted[n_train:]
 
+        if lowq_clips:
+            val_frac = val_ratio / (val_ratio + test_ratio)
+            n_val = round(len(lowq_clips) * val_frac)
+            lowq_shuffled = list(lowq_clips)
+            rng.shuffle(lowq_shuffled)
+            val_clips = lowq_shuffled[:n_val]
+            test_clips = lowq_shuffled[n_val:]
+        else:
+            val_clips, test_clips = [], []
+        
+        train_ids.extend(c['frame_dir'] for c in train_clips)
+        val_ids.extend(c['frame_dir'] for c in val_clips)
+        test_ids.extend(c['frame_dir'] for c in test_clips)
+
+    for clip in annotations:
+        clip.pop('_avg_conf', None)
+    
+    return train_ids, val_ids, test_ids
+
+
+def split_clips(annotations, df, val_ratio=0.1, test_ratio=0.1, random_seed=42):
+    """
+    Returns:
+        train_ids, val_ids, test_ids: indice by frame_dir 
+    """
     # video 단위로 train/val 분리 
     from collections import defaultdict
     video_by_class = defaultdict(list)
@@ -129,8 +167,37 @@ def create_dataset(kpt_dir, csv_path, output_path,
         val_files.update(va)
         test_files.update(te)
 
+    train_ids, val_ids, test_ids = [], [], []
+    for clip in annotations:
+        file_name = clip['file_name']
+        if file_name in train_files:
+            train_ids.append(clip['frame_dir'])
+        elif file_name in val_files:
+            val_ids.append(clip['frame_dir'])
+        else:
+            test_ids.append(clip['frame_dir'])
+    
+    return train_ids, val_ids, test_ids
+    
+
+def create_dataset(kpt_dir, csv_path, output_path, 
+                   val_ratio=0.1, test_ratio=0.1, random_seed=42,
+                   clip_len=100, stride=50, min_frames=30,
+                   exclude_labels=None, by_conf=False):
+    
+    df = pd.read_csv(csv_path)
+
+    if exclude_labels:
+        df = df[~df['exercise'].isin(exclude_labels)]
+
+    exercise_types = sorted(df['exercise'].unique())
+    label_mapping = {ex: idx for idx, ex in enumerate(exercise_types)}
+
+    print(f"클래스 수 : {len(exercise_types)}")
+    print(f"클래스 매핑: {label_mapping}")
+
     # 클립 생성
-    annotations, train_ids, val_ids, test_ids = [], [], [], []
+    annotations = []
     skipped = []
 
     for _, row in df.iterrows():
@@ -154,13 +221,19 @@ def create_dataset(kpt_dir, csv_path, output_path,
                            stride=stride, min_frames=min_frames)
         
         for clip in clips:
+            clip['file_name'] = file_name
             annotations.append(clip)
-            if file_name in train_files:
-                train_ids.append(clip['frame_dir'])
-            elif file_name in val_files:
-                val_ids.append(clip['frame_dir'])
-            else:
-                test_ids.append(clip['frame_dir'])
+    
+    # train/val/test
+    if by_conf:
+        train_ids, val_ids, test_ids = split_by_conf(
+            annotations, val_ratio=val_ratio, test_ratio=test_ratio, random_seed=random_seed
+        )
+    else:
+        train_ids, val_ids, test_ids = split_clips(
+            annotations, df, val_ratio=val_ratio, test_ratio=test_ratio, random_seed=random_seed
+        )
+
     
     dataset = {
         'split': {'train': train_ids, 'val': val_ids, 'test': test_ids},
@@ -271,6 +344,12 @@ def main():
         default=None,
         help='List of labels to exclude (default: None)'
     )
+    parser.add_argument(
+        '--by-conf',
+        action='store_true',
+        default=False,
+        help='Split into train, val, and test sets based on confidence (default: False)'
+    )
 
     args = parser.parse_args()
 
@@ -297,7 +376,8 @@ def main():
     create_dataset(str(kpt_dir), str(csv_path), str(output_path),
                    val_ratio=args.val_ratio, test_ratio=args.test_ratio,
                    random_seed=args.random_seed,
-                   exclude_labels=args.exclude_labels)
+                   exclude_labels=args.exclude_labels,
+                   by_conf=args.by_conf)
     verify_dataset(str(output_path))
     print("데이터셋 생성 및 검증 완료.")
 
