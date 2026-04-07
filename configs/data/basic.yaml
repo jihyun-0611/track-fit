@@ -6,7 +6,7 @@ workers_per_gpu: 4
 test_dataloader:
   video_per_gpu: 4
 train:
-  ann_file: ${data_dir}/${dataset_file}
+  ann_file: ${data.data_dir}/${data.dataset_file}
   split: train
   pipeline:
     - type: UniformSampleFrames
@@ -23,7 +23,7 @@ train:
     - type: ToTensor
       keys: [keypoint]
 val:
-  ann_file: ${data_dir}/${dataset_file}
+  ann_file: ${data.data_dir}/${data.dataset_file}
   split: val
   pipeline:
     - type: UniformSampleFrames
@@ -41,7 +41,7 @@ val:
     - type: ToTensor
       keys: [keypoint]
 test:
-  ann_file: ${data_dir}/${dataset_file}
+  ann_file: ${data.data_dir}/${data.dataset_file}
   split: test
   pipeline:
     - type: UniformSampleFrames
