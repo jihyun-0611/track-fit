@@ -1,0 +1,40 @@
+# @package _global_
+name: moderate_occlusion
+
+data:
+  dataset_file: split_by_conf.pkl
+  train:
+    pipeline:
+      - type: UniformSampleFrames
+        clip_len: 100
+      - type: PoseDecode
+      - type: Flip
+        flip_ratio: 0.5
+        left_kp: [1, 3, 5, 7, 9, 11, 13, 15]
+        right_kp: [2, 4, 6, 8, 10, 12, 14, 16]
+      - type: RandomJointMask
+        chance: 0.25
+        p: 0.48
+      - type: SpecificJointMask
+        joints: [5, 6, 7, 8, 9, 10]
+        p: 0.18
+      - type: SpecificJointMask
+        joints: [11, 12, 13, 14, 15, 16, 17, 18, 19]
+        p: 0.18
+      - type: TemporalOcclusion
+        min_frames: 18
+        max_frames: 35
+        num_segments: 1
+        p: 0.42
+      - type: GenSkeFeat
+        dataset: coco_new
+        feats: [j]
+      - type: FormatGCNInput
+        num_person: 1
+      - type: Collect
+        keys: [keypoint, label]
+        meta_keys: []
+      - type: ToTensor
+        keys: [keypoint]
+
+ckpt_file: finegym_j/best_top1_acc_epoch_141.pth
