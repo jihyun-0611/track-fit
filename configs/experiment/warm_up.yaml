@@ -36,3 +36,5 @@ data:
         meta_keys: []
       - type: ToTensor
         keys: [keypoint]
+
+total_epochs: 40
