@@ -45,4 +45,7 @@ checkpoint_config:
 log_config:
   interval: 100
 
-
+wandb:
+  enabled: true
+  project: track-fit
+  name: null

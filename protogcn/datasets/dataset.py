@@ -8,7 +8,8 @@ from torch.utils.data import Dataset
 
 from .pipelines.compose import Compose
 from ..utils.utils import get_logger, load_file, dump_file, auto_mix2
-from ..utils.evaluation import mean_average_precision, mean_class_accuracy, top_k_accuracy
+from ..utils.evaluation import mean_average_precision, mean_class_accuracy, top_k_accuracy, draw_confusion_matrix
+from ..utils.metrics import intra_class_similarity, expected_calibration_error
 
 
 class PoseDataset(Dataset):
@@ -249,7 +250,8 @@ class PoseDataset(Dataset):
                  results,
                  metrics='top_k_accuracy',
                  metric_options=dict(top_k_accuracy=dict(topk=(1, 5))),
-                 logger=None, 
+                 logger=None,
+                 features=None,
                  **deprecated_kwargs):
         """Perform evaluation for common datasets.
         
@@ -308,7 +310,10 @@ class PoseDataset(Dataset):
                 metric_options['top_k_accuracy'], **deprecated_kwargs
             )
         metrics = metrics if isinstance(metrics, (list, tuple)) else [metrics]
-        allowed_metrics = ['top_k_accuracy', 'mean_class_accuracy', 'mean_average_precision']
+        allowed_metrics = [
+            'top_k_accuracy', 'mean_class_accuracy', 'mean_average_precision',
+            'confusion_matrix', 'ece', 'intra_class_similarity',
+        ]
 
         for metric in metrics:
             if metric not in allowed_metrics:
@@ -361,7 +366,44 @@ class PoseDataset(Dataset):
                     print(log_msg)
                 else:
                     logger.info(log_msg)
-        
+
+            if metric == 'confusion_matrix':
+                opts = metric_options.get('confusion_matrix', {})
+                draw_confusion_matrix(
+                    results, self,
+                    work_dir=opts.get('work_dir', '.'),
+                    logger=logger,
+                    save_path=opts.get('save_path'),
+                    label_map_file=opts.get('label_map_file'),
+                )
+
+            if metric == 'ece':
+                ece_res = expected_calibration_error(np.array(results), np.array(gt_labels))
+                eval_results['ece'] = ece_res['ece']
+                eval_results['mce'] = ece_res['mce']
+                log_msg = f'ece: {ece_res["ece"]:.4f}, mce: {ece_res["mce"]:.4f}'
+                if logger is None:
+                    print(log_msg)
+                else:
+                    logger.info(log_msg)
+
+            if metric == 'intra_class_similarity':
+                if features is None:
+                    log_msg = 'intra_class_similarity skipped: features not provided'
+                    if logger is None:
+                        print(log_msg)
+                    else:
+                        logger.warning(log_msg)
+                else:
+                    sim_res = intra_class_similarity(features, np.array(gt_labels))
+                    eval_results['intra_class_sim_mean'] = sim_res['mean']
+                    eval_results['intra_class_sim_std'] = sim_res['std']
+                    log_msg = f'intra_class_sim: mean={sim_res["mean"]:.4f}, std={sim_res["std"]:.4f}'
+                    if logger is None:
+                        print(log_msg)
+                    else:
+                        logger.info(log_msg)
+
         return eval_results
     
 

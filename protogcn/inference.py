@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 import numpy as np
 from operator import itemgetter
 from omegaconf import DictConfig, OmegaConf
@@ -121,3 +122,45 @@ def inference_recognizer(model, data, outputs=None, as_tensor=True, top_k=5):
         return top_k_label, returned_features
 
     return top_k_label
+
+
+@torch.no_grad()
+def inference_similarity(model, keypoint):
+    """
+    Args:
+        model (nn.Module): The loaded recognizer.
+        keypoint : (N, M, T, V, C) tensor, preprocessed input data.
+    
+    Returns:
+        probs: (N, num_classes) softmax probs
+        pred: (N,) Predicted class indice
+    """
+    model.eval()
+    device = next(model.parameters()).device
+    keypoint = keypoint.to(device)
+
+    # z query
+    _, z_query = model.backbone(keypoint) # (N, V*V)
+
+    # projection
+    f_query = model.cls_head.csc_loss.cl_fc(z_query) # (N, 256)
+    f_query = F.normalize(f_query, p=2, dim=1) # L2 normalization
+
+    # memory bank m_k
+    # avg_f : (256, num_classes)
+    m = model.cls_head.avg_f.to(device) # (h, K)
+    m = m.T  # (K, h)
+    m = F.normalize(m, p=2, dim=1) # L2
+
+    tau = model.cls_head.csc_loss.tmp # temperature
+
+    # cosine similarity
+    scores = (m @ f_query.T).T / tau
+    probs = F.softmax(scores, dim=1)
+    pred = probs.argmax(dim=1)
+
+    return probs, pred
+
+
+
+

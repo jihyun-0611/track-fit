@@ -1,4 +1,10 @@
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import seaborn as sns
+import os
+
 
 
 def confusion_matrix(y_pred, y_real, normalize=None):
@@ -172,3 +178,43 @@ def binary_precision_recall_curve(y_score, y_true):
     sl = slice(last_ind, None, -1)
 
     return np.r_[precision[sl], -1], np.r_[recall[sl], 0], thresholds[sl]
+
+
+def draw_confusion_matrix(results, dataset, work_dir, logger, save_path=None, label_map_file=None):
+    scores = np.array(results)
+    preds = scores.argmax(axis=1).astype(np.int64)
+    gt = np.array([info['label'] for info in dataset.video_infos], dtype=np.int64)
+
+    label_set = np.unique(np.concatenate((preds, gt)))
+
+    # Load class names: {idx: name}
+    idx_to_name = None
+    if label_map_file and os.path.exists(label_map_file):
+        import json
+        with open(label_map_file) as f:
+            name_to_idx = json.load(f)
+        idx_to_name = {v: k for k, v in name_to_idx.items()}
+    tick_labels = [idx_to_name.get(int(l), str(l)) for l in label_set] if idx_to_name else label_set
+
+    cm = confusion_matrix(preds, gt, normalize='true')
+    fig, ax = plt.subplots(figsize=(12, 10))
+    sns.heatmap(cm, annot=True, fmt='.2f', cmap='Blues',
+                xticklabels=tick_labels, yticklabels=tick_labels, ax=ax)
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha='right')
+    ax.set_yticklabels(ax.get_yticklabels(), rotation=0)
+    ax.set_xlabel('Predicted Label')
+    ax.set_ylabel('True Label')
+    ax.set_title('Confusion Matrix')
+    plt.tight_layout()
+
+    save_path = save_path or os.path.join(work_dir, 'confusion_matrix.png')
+    fig.savefig(save_path, dpi=150)
+    plt.close(fig)
+
+    msg = f'Confusion matrix saved to {save_path}'
+    if logger is None:
+        print(msg)
+    else:
+        logger.info(msg)
+    return save_path
+
