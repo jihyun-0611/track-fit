@@ -1,4 +1,10 @@
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import seaborn as sns
+import os
+
 
 
 def confusion_matrix(y_pred, y_real, normalize=None):
@@ -172,3 +178,31 @@ def binary_precision_recall_curve(y_score, y_true):
     sl = slice(last_ind, None, -1)
 
     return np.r_[precision[sl], -1], np.r_[recall[sl], 0], thresholds[sl]
+
+
+def draw_confusion_matrix(results, dataset, work_dir, logger, save_path=None):
+    scores = np.array(results)
+    preds = scores.argmax(axis=1)
+    gt = np.array([info['label'] for info in dataset.video_infos])
+
+    label_set = np.unique(np.concatenate((preds, gt)))
+    cm = confusion_matrix(preds, gt, normalize='true')
+    fig, ax = plt.subplots(figsize=(12, 10))
+    sns.heatmap(cm, annot=True, fmt='.2f', cmap='Blues',
+                xticklabels=label_set, yticklabels=label_set, ax=ax)
+    ax.set_xlabel('Predicted Label')
+    ax.set_ylabel('True Label')
+    ax.set_title('Confusion Matrix')
+    plt.tight_layout()
+
+    save_path = save_path or os.path.join(work_dir, 'confusion_matrix.png')
+    fig.savefig(save_path, dpi=150)
+    plt.close(fig)
+
+    msg = f'Confusion matrix saved to {save_path}'
+    if logger is None:
+        print(msg)
+    else:
+        logger.info(msg)
+    return save_path
+

@@ -1,3 +1,4 @@
+import wandb
 import hydra
 from omegaconf import DictConfig, OmegaConf
 from dotenv import load_dotenv
@@ -22,6 +23,7 @@ from .models import Recognizer
 from .models import ProtoGCN
 from .models import Head
 from .utils import get_logger, dump_file, remap_model_keys
+from .test import run_test
 
 
 def set_random_seed(seed, deterministic=False):
@@ -88,6 +90,14 @@ def main(cfg: DictConfig):
     timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
     logger = get_logger('protogcn')
     logger.addHandler(logging.FileHandler(osp.join(work_dir, f'{timestamp}.log')))
+
+    wandb_cfg = cfg.get('wandb', {})
+    if wandb_cfg.get('enabled', False):
+        wandb.init(
+            project=wandb_cfg.get('project', 'track-fit'),
+            name=cfg.get('name', 'experiment'),
+            config=OmegaConf.to_container(cfg, resolve=True),
+        )
 
     # Seed
     seed = cfg.seed if cfg.seed is not None else np.random.randint(2**31)
@@ -235,11 +245,16 @@ def main(cfg: DictConfig):
                 pbar.set_postfix(loss=f'{avg_loss:.4f}', top1=f'{avg_top1:.4f}', lr=f'{lr:.6f}')
                 logger.info(f'Epoch [{epoch+1}][{i+1}/{len(train_loader)}] '
                             f'lr: {lr:.6f}, loss: {avg_loss:.4f}, top1: {avg_top1:.4f}')
+                if wandb_cfg.get('enabled', False):
+                    wandb.log({'train/loss': avg_loss, 'train/top1_acc': avg_top1, 'train/lr': lr}, step=current_iter)
                 log_vars_sum, num_samples = {}, 0
         
         # Validataion
         if cfg.validate and (epoch+1) % eval_interval == 0:
             eval_results = validate(model, val_loader, val_dataset, eval_cfg, logger)
+
+            if wandb_cfg.get('enabled', False):
+                wandb.log({f'val/{k}': v for k, v in eval_results.items()}, step=current_iter)
 
             if eval_results.get('top1_acc', 0) > best_score:
                 best_score = eval_results['top1_acc']
@@ -271,6 +286,10 @@ def main(cfg: DictConfig):
                         no_improve_epochs=no_improve_epochs)
         
     logger.info(f'Training done. Best: {best_score:.4f} at epoch {best_epoch}')
+    if wandb_cfg.get('enabled', False):
+        wandb.summary['best_top1_acc'] = best_score
+        wandb.summary['best_epoch'] = best_epoch
+        wandb.finish()
 
 
     #=============================== Final Test =================================
@@ -291,18 +310,27 @@ def main(cfg: DictConfig):
             shuffle=False
         )
 
-        if cfg.test_last and osp.exists(osp.join(work_dir, 'latest.pth')):
-            model.load_state_dict(torch.load(osp.join(work_dir, 'latest.pth'), weights_only=False)['state_dict'])
-            results = validate(model, test_loader, test_dataset, eval_cfg, logger)
-            dump_file(results, osp.join(work_dir, 'last_pred.pkl'))
-        
+        to_test = []
+        if cfg.test_last:
+            last_ckpt = osp.join(work_dir, 'latest.pth')
+            if osp.exists(last_ckpt):
+                to_test.append((last_ckpt, 'last', 'last_pred.pkl'))
         if cfg.test_best:
             best_ckpts = [f for f in os.listdir(work_dir) if 'best' in f and f.endswith('.pth')]
             if best_ckpts:
                 best_ckpt = max(best_ckpts, key=lambda x: int(x.split('epoch_')[-1].replace('.pth', '')) if 'epoch_' in x else 0)
-                model.load_state_dict(torch.load(osp.join(work_dir, best_ckpt), weights_only=False)['state_dict'])
-                results = validate(model, test_loader, test_dataset, eval_cfg, logger)
-                dump_file(results, osp.join(work_dir, 'best_pred.pkl'))
+                to_test.append((osp.join(work_dir, best_ckpt), 'best', 'best_pred.pkl'))
+
+        for ckpt_path, tag, dump_name in to_test:
+            model.load_state_dict(torch.load(ckpt_path, weights_only=False)['state_dict'])
+            eval_results, scores, cm_path = run_test(
+                model, test_loader, test_dataset, eval_cfg, work_dir, logger, tag=tag)
+            dump_file(scores, osp.join(work_dir, dump_name))
+            if wandb_cfg.get('enabled', False):
+                wandb.log({
+                    **{f'test/{tag}/{k}': v for k, v in eval_results.items()},
+                    f'test/{tag}/confusion_matrix': wandb.Image(cm_path),
+                })
 
 
 if __name__ == '__main__':
