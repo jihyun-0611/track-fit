@@ -374,6 +374,7 @@ class PoseDataset(Dataset):
                     work_dir=opts.get('work_dir', '.'),
                     logger=logger,
                     save_path=opts.get('save_path'),
+                    label_map_file=opts.get('label_map_file'),
                 )
 
             if metric == 'ece':

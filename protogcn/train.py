@@ -289,7 +289,6 @@ def main(cfg: DictConfig):
     if wandb_cfg.get('enabled', False):
         wandb.summary['best_top1_acc'] = best_score
         wandb.summary['best_epoch'] = best_epoch
-        wandb.finish()
 
 
     #=============================== Final Test =================================
@@ -321,16 +320,22 @@ def main(cfg: DictConfig):
                 best_ckpt = max(best_ckpts, key=lambda x: int(x.split('epoch_')[-1].replace('.pth', '')) if 'epoch_' in x else 0)
                 to_test.append((osp.join(work_dir, best_ckpt), 'best', 'best_pred.pkl'))
 
+        label_map_file = data_cfg.get('label_map')
+
         for ckpt_path, tag, dump_name in to_test:
             model.load_state_dict(torch.load(ckpt_path, weights_only=False)['state_dict'])
             eval_results, scores, cm_path = run_test(
-                model, test_loader, test_dataset, eval_cfg, work_dir, logger, tag=tag)
+                model, test_loader, test_dataset, eval_cfg, work_dir, logger,
+                tag=tag, label_map_file=label_map_file)
             dump_file(scores, osp.join(work_dir, dump_name))
             if wandb_cfg.get('enabled', False):
                 wandb.log({
                     **{f'test/{tag}/{k}': v for k, v in eval_results.items()},
                     f'test/{tag}/confusion_matrix': wandb.Image(cm_path),
                 })
+
+    if wandb_cfg.get('enabled', False):
+        wandb.finish()
 
 
 if __name__ == '__main__':

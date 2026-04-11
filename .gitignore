@@ -19,3 +19,4 @@ multirun/
 hydra_runs/
 hydra_multirun/
 *.pkl
+wandb/

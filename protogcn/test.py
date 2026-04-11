@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 
 @torch.no_grad()
-def run_test(model, test_loader, test_dataset, eval_cfg, work_dir, logger, tag='test'):
+def run_test(model, test_loader, test_dataset, eval_cfg, work_dir, logger, tag='test', label_map_file=None):
     """Run test inference and evaluate with extended metrics via dataset.evaluate().
 
     Collects softmax scores and pooled features in a single forward pass,
@@ -58,7 +58,7 @@ def run_test(model, test_loader, test_dataset, eval_cfg, work_dir, logger, tag='
         metrics=metrics,
         metric_options={
             'top_k_accuracy': {'topk': tuple(eval_cfg.get('topk', (1, 5)))},
-            'confusion_matrix': {'save_path': cm_path},
+            'confusion_matrix': {'save_path': cm_path, 'label_map_file': label_map_file},
         },
         features=features,
         logger=logger,
