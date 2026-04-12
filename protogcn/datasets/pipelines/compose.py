@@ -50,6 +50,11 @@ class Compose:
                 return None
         return data
     
+    def set_epoch(self, epoch):
+        for t in self.transforms:
+            if hasattr(t, 'set_epoch'):
+                t.set_epoch(epoch)
+    
     def __repr__(self):
         format_string = self.__class__.__name__ + '('
         for t in self.transforms:
