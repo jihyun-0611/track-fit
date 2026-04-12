@@ -73,7 +73,7 @@ class Head(nn.Module):
         return cls_score
 
         
-    def loss(self, cls_score, get_graph, label):
+    def loss(self, cls_score, get_graph, label, compute_acc=False):
         """
         Compute total loss
         
@@ -93,7 +93,7 @@ class Head(nn.Module):
             label = label.unsqueeze(0)
 
         # comput top-k accuracy
-        if cls_score.size() != label.size():
+        if compute_acc and cls_score.size() != label.size():
             top_k_acc = top_k_accuracy(
                 cls_score.detach().cpu().numpy(),
                 label.detach().cpu().numpy(),

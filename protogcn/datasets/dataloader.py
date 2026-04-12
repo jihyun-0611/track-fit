@@ -90,7 +90,7 @@ def build_dataloader(dataset,
                      seed=None,
                      drop_last=False,
                      pin_memory=True,
-                     persistent_workers=False,
+                     persistent_workers=True,
                      **kwargs):
     init_fn = partial(
         worker_init_fn,
