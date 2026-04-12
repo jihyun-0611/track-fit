@@ -3,6 +3,7 @@ name: strong_occlusion
 
 data:
   dataset_file: split_by_conf.pkl
+  label_map: ${data.data_dir}/split_by_conf_label_mapping.json
   train:
     pipeline:
       - type: UniformSampleFrames
