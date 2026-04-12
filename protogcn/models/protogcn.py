@@ -155,19 +155,11 @@ class ProtoGCN(nn.Module):
         # flatten : N C V V -> N C V*V
         last_graph = last_graph.view(N, M, grp_channels, V, V).mean(1).view(N, grp_channels, V*V)
 
-        reconstructed  = []
-        for i in range(N):
-            # V*V C 
-            features = last_graph[i].permute(1, 0)
-            # PRN
-            # V*V C
-            recon_graph = self.prn(features)
-            # C V V
-            recon_graph = recon_graph.permute(1, 0).view(grp_channels, V, V)
-            reconstructed.append(recon_graph)
+        features = last_graph.permute(0, 2, 1) # N V*V C
+        recon_graph = self.prn(features) # N V*V C
+        batch_reconstructed = recon_graph.permute(0, 2, 1).view(N, grp_channels, V, V)
 
         # N C V V
-        batch_reconstructed = torch.stack(reconstructed, dim=0)
         batch_reconstructed = self.post(batch_reconstructed)
         batch_reconstructed = self.relu(self.bn(batch_reconstructed))
         # N V*V

@@ -20,7 +20,7 @@ class ClassSpecificContrastiveLoss(nn.Module):
         self.tmp = tmp
         self.momentum = momentum
         self.pred_threshold = pred_threshold
-        self.avg_f = torch.randn(self.h_channel, self.n_class)
+        self.register_buffer('avg_f', torch.randn(self.h_channel, self.n_class))
         self.cl_fc = nn.Linear(self.n_channel, self.h_channel)
         self.loss = nn.CrossEntropyLoss(reduction='none')
 
@@ -76,7 +76,7 @@ class ClassSpecificContrastiveLoss(nn.Module):
         # 256 num_class
         f_mem = avg_f * has_object + (1-has_object) * f_mask
         with torch.no_grad():
-            self.avg_f = f_mem
+            self.avg_f.copy_(f_mem)
         
         return f_mem
     

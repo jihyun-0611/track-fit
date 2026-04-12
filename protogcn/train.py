@@ -228,7 +228,8 @@ def main(cfg: DictConfig):
             
             # Forward & Backward
             optimizer.zero_grad()
-            losses = model(data['keypoint'].cuda(), data['label'].cuda(), return_loss=True)
+            losses = model(data['keypoint'].cuda(), data['label'].cuda(), return_loss=True,
+                           compute_acc=((i+1) % log_interval == 0))
             loss, log_vars = parse_losses(losses)
             loss.backward()
             optimizer.step()
@@ -242,7 +243,7 @@ def main(cfg: DictConfig):
             # Log
             if (i+1) % log_interval == 0:
                 avg_loss = log_vars_sum.get('loss', 0) / num_samples
-                avg_top1 = log_vars_sum.get('top1_acc', 0) / num_samples
+                avg_top1 = log_vars.get('top1_acc', 0)
                 pbar.set_postfix(loss=f'{avg_loss:.4f}', top1=f'{avg_top1:.4f}', lr=f'{lr:.6f}')
                 logger.info(f'Epoch [{epoch+1}][{i+1}/{len(train_loader)}] '
                             f'lr: {lr:.6f}, loss: {avg_loss:.4f}, top1: {avg_top1:.4f}')

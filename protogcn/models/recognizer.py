@@ -93,7 +93,7 @@ class Recognizer(nn.Module):
         x, get_graph = self.extract_feat(keypoint)
         cls_score = self.cls_head(x)
         gt_label = label.squeeze(-1)
-        loss = self.cls_head.loss(cls_score, get_graph, gt_label)
+        loss = self.cls_head.loss(cls_score, get_graph, gt_label, **kwargs)
         losses.update(loss)
 
         return losses
