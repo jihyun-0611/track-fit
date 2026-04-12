@@ -1,7 +1,8 @@
 # @package _global_
-name: temporal_occlusion_cscl05
+name: warmup_occlusion
 
 data:
+  dataset_file: split_by_conf.pkl
   train:
     pipeline:
       - type: UniformSampleFrames
@@ -13,12 +14,18 @@ data:
         right_kp: [2, 4, 6, 8, 10, 12, 14, 16]
       - type: RandomJointMask
         chance: 0.15
-        p: 0.5
+        p: 0.4
+      - type: SpecificJointMask
+        joints: [5, 6, 7, 8, 9, 10]
+        p: 0.1
+      - type: SpecificJointMask
+        joints: [11, 12, 13, 14, 15, 16, 17, 18, 19]
+        p: 0.1
       - type: TemporalOcclusion
-        min_frames: 25
-        max_frames: 100
+        min_frames: 15
+        max_frames: 25
         num_segments: 1
-        p: 0.5
+        p: 0.35
       - type: GenSkeFeat
         dataset: coco_new
         feats: [j]
@@ -30,10 +37,4 @@ data:
       - type: ToTensor
         keys: [keypoint]
 
-
-model:
-  cls_head:
-    weight: 0.5
-
-optimizer: 
-  weight_decay: 0.001
+total_epochs: 40

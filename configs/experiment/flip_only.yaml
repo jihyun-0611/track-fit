@@ -1,5 +1,5 @@
 # @package _global_
-name: only_flip
+name: flip_only
 
 data:
   train:

@@ -1,5 +1,5 @@
 # @package _global_
-name: temporal_occlusion_cscl05
+name: temporal_occlusion
 
 data:
   train:
@@ -30,7 +30,3 @@ data:
       - type: ToTensor
         keys: [keypoint]
 
-
-model:
-  cls_head:
-    weight: 0.5
