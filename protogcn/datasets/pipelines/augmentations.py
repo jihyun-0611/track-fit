@@ -158,9 +158,22 @@ class RandomJointMask:
     
     Required keys: 'keypoint', 'keypoint_score'.
     """
-    def __init__(self, chance, p=1.0):
+    def __init__(self, chance, p=1.0, schedule=None):
+        self._init_chance = chance
+        self._init_p = p
+        self.schedule = sorted(schedule or [], key=lambda x: x['epoch'])
         self.chance = chance
         self.p = p
+    
+    def set_epoch(self, epoch):
+        self.chance = self._init_chance
+        self.p = self._init_p
+        for phase in self.schedule:
+            if epoch >= phase['epoch']:
+                if 'chance' in phase:
+                    self.chance = phase['chance']
+                if 'p' in phase:
+                    self.p = phase['p']
     
     def __call__(self, results):
         if np.random.rand() >= self.p:
@@ -194,9 +207,18 @@ class SpecificJointMask:
     Required keys: 'keypoint', 'keypoint_score'.
     
     """
-    def __init__(self, joints, p=1.0):
+    def __init__(self, joints, p=1.0, schedule=None):
         self.joints = joints
+        self._init_p = p
+        self.schedule = sorted(schedule or [], key=lambda x: x['epoch'])
         self.p = p
+
+    def set_epoch(self, epoch):
+        self.p = self._init_p
+        for phase in self.schedule:
+            if epoch >= phase['epoch']:
+                if 'p' in phase:
+                    self.p = phase['p']
 
     def __call__(self, results):
         if np.random.rand() > self.p:
@@ -275,11 +297,23 @@ class TemporalOcclusion:
     
     Required keys: 'keypoint', 'keypoint_score'.
     """
-    def __init__(self, min_frames=25, max_frames=100, num_segments=1, p=0.5):
+    def __init__(self, min_frames=25, max_frames=100, num_segments=1, p=0.5, schedule=None):
+        self._init = dict(min_frames=min_frames, max_frames=max_frames,
+                          num_segments=num_segments, p=p)
+        self.schedule = sorted(schedule or [], key=lambda x: x['epoch'])
         self.min_frames = min_frames
         self.max_frames = max_frames
         self.num_segments = num_segments
         self.p = p
+
+    def set_epoch(self, epoch):
+        for k, v in self._init.items():
+            setattr(self, k, v)
+        for phase in self.schedule:
+            if epoch >= phase['epoch']:
+                for k in ('min_frames', 'max_frames', 'num_segments', 'p'):
+                    if k in phase:
+                        setattr(self, k, phase[k])
     
     def __call__(self, results):
         if np.random.rand() >= self.p:
