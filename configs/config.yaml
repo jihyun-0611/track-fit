@@ -1,5 +1,5 @@
 defaults:
-  - model: protogcn
+  - model: protogcn22
   - data: basic
   - _self_
   - optional experiment: null
@@ -17,7 +17,7 @@ test_best: true
 auto_resume: true
 resume_from: null
 ckpt_dir: ${oc.env:WORK_DIR,}
-ckpt_file: freeze/best_top1_acc_epoch_20.pth
+ckpt_file: freeze/best_top1_acc_epoch_25.pth
 load_from: ${ckpt_dir}/${ckpt_file}
 
 total_epochs: 100

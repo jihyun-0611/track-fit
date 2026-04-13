@@ -1,5 +1,5 @@
 # @package _global_
-name: temporal_occlusion
+name: specific_occ_lower
 
 data:
   train:
@@ -7,11 +7,9 @@ data:
       - type: UniformSampleFrames
         clip_len: 100
       - type: PoseDecode
-      - type: TemporalOcclusion
-        min_frames: 20
-        max_frames: 50
-        num_segments: 1
-        p: 0.5
+      - type: SpecificJointMask
+        joints: [11, 12, 13, 14, 15, 16, 17, 18, 19]
+        p: 0.1
       - type: GenSkeFeat
         dataset: coco_new
         feats: [j]
@@ -22,4 +20,3 @@ data:
         meta_keys: []
       - type: ToTensor
         keys: [keypoint]
-

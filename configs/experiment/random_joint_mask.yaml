@@ -1,5 +1,5 @@
 # @package _global_
-name: temporal_occlusion
+name: random_joint_mask
 
 data:
   train:
@@ -7,11 +7,9 @@ data:
       - type: UniformSampleFrames
         clip_len: 100
       - type: PoseDecode
-      - type: TemporalOcclusion
-        min_frames: 20
-        max_frames: 50
-        num_segments: 1
-        p: 0.5
+      - type: RandomJointMask
+        chance: 0.25
+        p: 0.48
       - type: GenSkeFeat
         dataset: coco_new
         feats: [j]
