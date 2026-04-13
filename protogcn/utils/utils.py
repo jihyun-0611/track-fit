@@ -1,9 +1,9 @@
+import math
 import logging
 import os.path as osp
 import pickle
 import numpy as np
 import torch
-import torch.optim as optim
 
 
 
@@ -97,24 +97,57 @@ def remap_model_keys(state_dict):
     return new_sd
 
 
+class Scheduler:
+    """Direct cosine LR scheduler without PyTorch scheduler internals."""
+
+    def __init__(self, optimizer, sched_type, base_lr, min_lr, total_iters, T_0, T_mult):
+        self.optimizer = optimizer
+        self.sched_type = sched_type
+        self.base_lr = base_lr
+        self.min_lr = min_lr
+        self.total_iters = total_iters
+        self.T_0 = T_0
+        self.T_mult = T_mult
+        self._iter = 0  # used for cosine_annealing
+
+    def step(self, t=None):
+        if self.sched_type == 'cosine_annealing':
+            self._iter += 1
+            progress = self._iter / self.total_iters
+            lr = self.min_lr + (self.base_lr - self.min_lr) * (1 + math.cos(math.pi * progress)) / 2
+        elif self.sched_type == 'cosine_warm_restarts':
+            T_cur, T_i = self._compute_T_cur(t)
+            lr = self.min_lr + (self.base_lr - self.min_lr) * (1 + math.cos(math.pi * T_cur / T_i)) / 2
+        else:
+            raise ValueError(f'Unknown scheduler type: {self.sched_type}')
+        for pg in self.optimizer.param_groups:
+            pg['lr'] = lr
+
+    def _compute_T_cur(self, t):
+        if self.T_mult == 1:
+            return t % self.T_0, self.T_0
+        T_i = self.T_0
+        while t >= T_i:
+            t -= T_i
+            T_i *= self.T_mult
+        return t, T_i
+
+    def state_dict(self):
+        return {'_iter': self._iter}
+
+    def load_state_dict(self, state):
+        self._iter = state.get('_iter', 0)
+
+
 def build_scheduler(optimizer, cfg, total_iters, total_epochs):
     sched_cfg = cfg.get('scheduler', {})
     sched_type = sched_cfg.get('type', 'cosine_annealing')
     min_lr = sched_cfg.get('min_lr', 0.0)
+    base_lr = optimizer.param_groups[0]['lr']
+    T_0 = sched_cfg.get('T_0', total_epochs // 3)
+    T_mult = sched_cfg.get('T_mult', 1)
 
-    if sched_type == 'cosine_annealing':
-        scheduler = optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, T_max=total_iters, eta_min=min_lr, last_epoch=-1
-        )
-    elif sched_type == 'cosine_warm_restarts':
-        T_0 = sched_cfg.get('T_0', total_epochs // 3)
-        T_mult = sched_cfg.get('T_mult', 1)
-        scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(
-            optimizer, T_0=T_0, T_mult=T_mult, eta_min=min_lr
-        )
-    else:
-        raise ValueError(f'Unknown scheduler type: {sched_type}')
-    
+    scheduler = Scheduler(optimizer, sched_type, base_lr, min_lr, total_iters, T_0, T_mult)
     return scheduler, sched_type
 
 
