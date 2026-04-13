@@ -2,7 +2,7 @@ defaults:
   - model: protogcn
   - data: basic
   - _self_
-  - optional experiment: temporal_occlusion
+  - optional experiment: null
 
 name: exercise
 work_dir: null
@@ -28,8 +28,11 @@ optimizer:
   weight_decay: 0.0005
   nesterov: true
 
-lr_config:
-  min_lr: 0.0
+scheduler:
+  type: cosine_annealing                  # cosine_annealing | cosine_warm_restarts
+  min_lr: 0.000001
+  # T_0: 10
+  # T_mult: 10
 
 early_stopping:
   patience: 20

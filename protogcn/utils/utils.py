@@ -1,7 +1,10 @@
+import math
 import logging
 import os.path as osp
 import pickle
 import numpy as np
+import torch
+
 
 
 def get_logger(name='protogcn', log_level=logging.INFO):
@@ -93,3 +96,66 @@ def remap_model_keys(state_dict):
         new_sd[new_k]= v
     return new_sd
 
+
+class Scheduler:
+    """Direct cosine LR scheduler without PyTorch scheduler internals."""
+
+    def __init__(self, optimizer, sched_type, base_lr, min_lr, total_iters, T_0, T_mult):
+        self.optimizer = optimizer
+        self.sched_type = sched_type
+        self.base_lr = base_lr
+        self.min_lr = min_lr
+        self.total_iters = total_iters
+        self.T_0 = T_0
+        self.T_mult = T_mult
+        self._iter = 0  # used for cosine_annealing
+
+    def step(self, t=None):
+        if self.sched_type == 'cosine_annealing':
+            self._iter += 1
+            progress = self._iter / self.total_iters
+            lr = self.min_lr + (self.base_lr - self.min_lr) * (1 + math.cos(math.pi * progress)) / 2
+        elif self.sched_type == 'cosine_warm_restarts':
+            T_cur, T_i = self._compute_T_cur(t)
+            lr = self.min_lr + (self.base_lr - self.min_lr) * (1 + math.cos(math.pi * T_cur / T_i)) / 2
+        else:
+            raise ValueError(f'Unknown scheduler type: {self.sched_type}')
+        for pg in self.optimizer.param_groups:
+            pg['lr'] = lr
+
+    def _compute_T_cur(self, t):
+        if self.T_mult == 1:
+            return t % self.T_0, self.T_0
+        T_i = self.T_0
+        while t >= T_i:
+            t -= T_i
+            T_i *= self.T_mult
+        return t, T_i
+
+    def state_dict(self):
+        return {'_iter': self._iter}
+
+    def load_state_dict(self, state):
+        self._iter = state.get('_iter', 0)
+
+
+def build_scheduler(optimizer, cfg, total_iters, total_epochs):
+    sched_cfg = cfg.get('scheduler', {})
+    sched_type = sched_cfg.get('type', 'cosine_annealing')
+    min_lr = sched_cfg.get('min_lr', 0.0)
+    base_lr = optimizer.param_groups[0]['lr']
+    T_0 = sched_cfg.get('T_0', total_epochs // 3)
+    T_mult = sched_cfg.get('T_mult', 1)
+
+    scheduler = Scheduler(optimizer, sched_type, base_lr, min_lr, total_iters, T_0, T_mult)
+    return scheduler, sched_type
+
+
+def save_checkpoint(model, optimizer, scheduler, epoch, work_dir, filename, **kwargs):
+    torch.save({
+        'epoch': epoch,
+        'state_dict': model.state_dict(),
+        'optimizer': optimizer.state_dict(),
+        'scheduler': scheduler.state_dict(),
+        **kwargs
+    }, osp.join(work_dir, filename))

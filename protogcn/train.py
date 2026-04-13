@@ -9,7 +9,6 @@ import os.path as osp
 import time 
 import random
 import logging
-import math
 from collections import OrderedDict
 
 from tqdm import tqdm
@@ -22,7 +21,7 @@ from .datasets import build_dataloader, PoseDataset
 from .models import Recognizer
 from .models import ProtoGCN
 from .models import Head
-from .utils import get_logger, dump_file, remap_model_keys
+from .utils import get_logger, dump_file, remap_model_keys, build_scheduler, save_checkpoint
 from .test import run_test
 
 
@@ -69,15 +68,6 @@ def validate(model, val_loader, val_dataset, eval_cfg, logger):
         logger.info(f'{name}: {val:.4f}')
     
     return eval_results
-
-
-def save_checkpoint(model, optimizer, epoch, work_dir, filename, **kwargs):
-    torch.save({
-        'epoch': epoch,
-        'state_dict': model.state_dict(),
-        'optimizer': optimizer.state_dict(),
-        **kwargs
-    }, osp.join(work_dir, filename))
 
 
 @hydra.main(config_path="../configs", config_name="config", version_base=None)
@@ -172,8 +162,7 @@ def main(cfg: DictConfig):
 
     total_epochs = cfg.get('total_epochs', 150)
     total_iters = total_epochs * len(train_loader)
-    min_lr = cfg.get('lr_config', {}).get('min_lr', 0)
-    base_lr = opt_cfg['lr']
+    scheduler, sched_type = build_scheduler(optimizer, cfg, total_iters, total_epochs)
 
     #================================ Resume =================================
     start_epoch, best_score, best_epoch, current_iter = 0, 0, 0, 0
@@ -189,6 +178,8 @@ def main(cfg: DictConfig):
         ckpt = torch.load(resume_from, map_location='cpu', weights_only=False)
         model.load_state_dict(ckpt['state_dict'])
         optimizer.load_state_dict(ckpt['optimizer'])
+        if 'scheduler' in ckpt:
+            scheduler.load_state_dict(ckpt['scheduler'])
         start_epoch = ckpt['epoch']
         current_iter = ckpt.get('iter', start_epoch * len(train_loader))
         best_score = ckpt.get('best_score', 0)
@@ -220,11 +211,9 @@ def main(cfg: DictConfig):
         for i, data in enumerate(pbar):
             current_iter += 1
 
-            # Cosine Annealing LR (by iter)
-            progress = current_iter / total_iters
-            lr = min_lr + (base_lr - min_lr) * (1 + math.cos(math.pi * progress)) / 2
-            for pg in optimizer.param_groups:
-                pg['lr'] = lr
+            # Scheduler step
+            if sched_type == 'cosine_warm_restarts':
+                scheduler.step(epoch + i / len(train_loader))
             
             # Forward & Backward
             optimizer.zero_grad()
@@ -233,6 +222,10 @@ def main(cfg: DictConfig):
             loss, log_vars = parse_losses(losses)
             loss.backward()
             optimizer.step()
+
+            if sched_type == 'cosine_annealing':
+                scheduler.step()
+            lr = optimizer.param_groups[0]['lr']
 
             # Accumulate logs
             bs = data['keypoint'].size(0)
@@ -262,7 +255,7 @@ def main(cfg: DictConfig):
                 best_score = eval_results['top1_acc']
                 best_epoch = epoch + 1
                 no_improve_epochs = 0
-                save_checkpoint(model, optimizer, epoch+1, work_dir,
+                save_checkpoint(model, optimizer, scheduler, epoch+1, work_dir,
                                 f'best_top1_acc_epoch_{epoch+1}.pth',
                                 iter=current_iter, best_score=best_score, best_epoch=best_epoch,
                                 no_improve_epochs=no_improve_epochs)
@@ -272,18 +265,18 @@ def main(cfg: DictConfig):
                 logger.info(f'No improvement for {no_improve_epochs}/{patience} epochs')
                 if patience > 0 and no_improve_epochs >= patience:
                     logger.info(f'Early stopping triggered at epoch {epoch+1}')
-                    save_checkpoint(model, optimizer, epoch+1, work_dir, 'latest.pth',
+                    save_checkpoint(model, optimizer, scheduler, epoch+1, work_dir, 'latest.pth',
                                     iter=current_iter, best_score=best_score, best_epoch=best_epoch,
                                     no_improve_epochs=no_improve_epochs)
                     break
         
         # Save checkpoint
         if (epoch + 1) % ckpt_interval == 0:
-            save_checkpoint(model, optimizer, epoch+1, work_dir, f'epoch_{epoch+1}.pth',
+            save_checkpoint(model, optimizer, scheduler, epoch+1, work_dir, f'epoch_{epoch+1}.pth',
                             iter=current_iter, best_score=best_score, best_epoch=best_epoch,
                             no_improve_epochs=no_improve_epochs)
 
-        save_checkpoint(model, optimizer, epoch+1, work_dir, f'latest.pth',
+        save_checkpoint(model, optimizer, scheduler, epoch+1, work_dir, f'latest.pth',
                         iter=current_iter, best_score=best_score, best_epoch=best_epoch,
                         no_improve_epochs=no_improve_epochs)
         
