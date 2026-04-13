@@ -2,6 +2,9 @@ import logging
 import os.path as osp
 import pickle
 import numpy as np
+import torch
+import torch.optim as optim
+
 
 
 def get_logger(name='protogcn', log_level=logging.INFO):
@@ -93,3 +96,33 @@ def remap_model_keys(state_dict):
         new_sd[new_k]= v
     return new_sd
 
+
+def build_scheduler(optimizer, cfg, total_iters, total_epochs):
+    sched_cfg = cfg.get('scheduler', {})
+    sched_type = sched_cfg.get('type', 'cosine_annealing')
+    min_lr = sched_cfg.get('min_lr', 0.0)
+
+    if sched_type == 'cosine_annealing':
+        scheduler = optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=total_iters, eta_min=min_lr, last_epoch=-1
+        )
+    elif sched_type == 'cosine_warm_restarts':
+        T_0 = sched_cfg.get('T_0', total_epochs // 3)
+        T_mult = sched_cfg.get('T_mult', 1)
+        scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(
+            optimizer, T_0=T_0, T_mult=T_mult, eta_min=min_lr
+        )
+    else:
+        raise ValueError(f'Unknown scheduler type: {sched_type}')
+    
+    return scheduler, sched_type
+
+
+def save_checkpoint(model, optimizer, scheduler, epoch, work_dir, filename, **kwargs):
+    torch.save({
+        'epoch': epoch,
+        'state_dict': model.state_dict(),
+        'optimizer': optimizer.state_dict(),
+        'scheduler': scheduler.state_dict(),
+        **kwargs
+    }, osp.join(work_dir, filename))
