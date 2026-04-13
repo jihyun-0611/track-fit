@@ -5,3 +5,6 @@ freeze_backbone: true
 optimizer:
   lr: 0.01
 
+data:
+  dataset_file: split_by_conf.pkl
+  label_map: ${data.data_dir}/split_by_conf_label_mapping.json

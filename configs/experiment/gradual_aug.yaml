@@ -17,27 +17,27 @@ data:
         chance: 0.15
         p: 0.4
         schedule:
-          - epoch: 30
+          - epoch: 20
             chance: 0.25
             p: 0.45
-          - epoch: 60
+          - epoch: 40
             chance: 0.35
             p: 0.5
       - type: SpecificJointMask
         joints: [5, 6, 7, 8, 9, 10]
         p: 0.1
         schedule:
-          - epoch: 30
+          - epoch: 20
             p: 0.18
-          - epoch: 60
+          - epoch: 40
             p: 0.25
       - type: SpecificJointMask
         joints: [11, 12, 13, 14, 15, 16, 17, 18, 19]
         p: 0.1
         schedule:
-          - epoch: 30
+          - epoch: 20
             p: 0.18
-          - epoch: 60
+          - epoch: 40
             p: 0.25
       - type: TemporalOcclusion
         min_frames: 15
@@ -45,11 +45,11 @@ data:
         num_segments: 1
         p: 0.35
         schedule:
-          - epoch: 30
+          - epoch: 20
             min_frames: 18
             max_frames: 35
             p: 0.4
-          - epoch: 60
+          - epoch: 40
             min_frames: 20
             max_frames: 50
             p: 0.45

@@ -17,8 +17,8 @@ data:
         chance: 0.15
         p: 0.5
       - type: TemporalOcclusion
-        min_frames: 25
-        max_frames: 100
+        min_frames: 20
+        max_frames: 50
         num_segments: 1
         p: 0.5
       - type: GenSkeFeat

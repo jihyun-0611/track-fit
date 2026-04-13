@@ -2,7 +2,7 @@ defaults:
   - model: protogcn
   - data: basic
   - _self_
-  - optional experiment: gradual_aug
+  - optional experiment: temporal_occlusion
 
 name: exercise
 work_dir: null
@@ -17,13 +17,13 @@ test_best: true
 auto_resume: true
 resume_from: null
 ckpt_dir: ${oc.env:WORK_DIR,}
-ckpt_file: finegym_j/best_top1_acc_epoch_141.pth
+ckpt_file: freeze/best_top1_acc_epoch_20.pth
 load_from: ${ckpt_dir}/${ckpt_file}
 
 total_epochs: 100
 
 optimizer: 
-  lr: 0.025
+  lr: 0.001
   momentum: 0.9
   weight_decay: 0.0005
   nesterov: true
@@ -32,7 +32,7 @@ lr_config:
   min_lr: 0.0
 
 early_stopping:
-  patience: 10
+  patience: 20
 
 evaluation:
   interval: 5
