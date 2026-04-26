@@ -1,0 +1,36 @@
+runs:
+  - name: finetuning_exclude_byconf
+    overrides:
+      - experiment=finetuning
+      - data=exclude_byconf
+      - model=protogcn20
+      - load_from=work_dirs/freeze_byconf_exclude/best_top1_acc_epoch_25.pth
+      - name=finetuning_exclude_byconf
+      - work_dir=work_dirs/finetuning_exclude_byconf
+
+  - name: finetuning_exclude
+    overrides:
+      - experiment=finetuning
+      - data=exclude
+      - model=protogcn20
+      - load_from=work_dirs/freeze_exclude/best_top1_acc_epoch_30.pth
+      - name=finetuning_exclude
+      - work_dir=work_dirs/finetuning_exclude
+  
+  - name: finetuning_byconf
+    overrides:
+      - experiment=finetuning
+      - data=byconf
+      - model=protogcn22
+      - load_from=work_dirs/freeze_byconf/best_top1_acc_epoch_30.pth
+      - name=finetuning_byconf
+      - work_dir=work_dirs/finetuning_byconf
+
+  - name: finetuning
+    overrides:
+      - experiment=finetuning
+      - data=basic
+      - model=protogcn22
+      - load_from=work_dirs/freeze/best_top1_acc_epoch_25.pth
+      - name=finetuning
+      - work_dir=work_dirs/finetuning

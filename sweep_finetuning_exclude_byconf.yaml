@@ -1,0 +1,90 @@
+runs:
+  - name: finetuning_exclude_byconf_flip_only
+    overrides:
+      - experiment=flip_only
+      - data=exclude_byconf
+      - model=protogcn20
+      - load_from=work_dirs/freeze_exclude_byconf/best_top1_acc_epoch_25.pth
+      - name=finetuning_exclude_byconf_flip_only
+      - work_dir=work_dirs/finetuning_exclude_byconf_flip_only
+
+  - name: finetuning_exclude_byconf_strong_aug
+    overrides:
+      - experiment=strong_aug
+      - data=exclude_byconf
+      - model=protogcn20
+      - load_from=work_dirs/freeze_exclude_byconf/best_top1_acc_epoch_25.pth
+      - name=finetuning_exclude_byconf_strong_aug
+      - work_dir=work_dirs/finetuning_exclude_byconf_strong_aug
+
+  - name: finetuning_exclude_byconf_gradual_aug
+    overrides:
+      - experiment=gradual_aug
+      - data=exclude_byconf
+      - model=protogcn20
+      - load_from=work_dirs/freeze_exclude_byconf/best_top1_acc_epoch_25.pth
+      - name=finetuning_exclude_byconf_gradual_aug
+      - work_dir=work_dirs/finetuning_exclude_byconf_gradual_aug
+
+  - name: finetuning_exclude_byconf_gradual_occlusion
+    overrides:
+      - experiment=gradual_occlusion
+      - data=exclude_byconf
+      - model=protogcn20
+      - load_from=work_dirs/freeze_exclude_byconf/best_top1_acc_epoch_25.pth
+      - name=finetuning_exclude_byconf_gradual_occlusion
+      - work_dir=work_dirs/finetuning_exclude_byconf_gradual_occlusion
+
+  - name: finetuning_exclude_byconf_random_joint_mask
+    overrides:
+      - experiment=random_joint_mask
+      - data=exclude_byconf
+      - model=protogcn20
+      - load_from=work_dirs/freeze_exclude_byconf/best_top1_acc_epoch_25.pth
+      - name=finetuning_exclude_byconf_random_joint_mask
+      - work_dir=work_dirs/finetuning_exclude_byconf_random_joint_mask
+
+  - name: finetuning_exclude_byconf_specific_occlusion
+    overrides:
+      - experiment=specific_occlusion
+      - data=exclude_byconf
+      - model=protogcn20
+      - load_from=work_dirs/freeze_exclude_byconf/best_top1_acc_epoch_25.pth
+      - name=finetuning_exclude_byconf_specific_occlusion
+      - work_dir=work_dirs/finetuning_exclude_byconf_specific_occlusion
+
+  - name: finetuning_exclude_byconf_specific_occ_lower
+    overrides:
+      - experiment=specific_occ_lower
+      - data=exclude_byconf
+      - model=protogcn20
+      - load_from=work_dirs/freeze_exclude_byconf/best_top1_acc_epoch_25.pth
+      - name=finetuning_exclude_byconf_specific_occ_lower
+      - work_dir=work_dirs/finetuning_exclude_byconf_specific_occ_lower
+
+  - name: finetuning_exclude_byconf_specific_occ_upper
+    overrides:
+      - experiment=specific_occ_upper
+      - data=exclude_byconf
+      - model=protogcn20
+      - load_from=work_dirs/freeze_exclude_byconf/best_top1_acc_epoch_25.pth
+      - name=finetuning_exclude_byconf_specific_occ_upper
+      - work_dir=work_dirs/finetuning_exclude_byconf_specific_occ_upper
+
+  - name: finetuning_exclude_byconf_strong_occlusion
+    overrides:
+      - experiment=strong_occlusion
+      - data=exclude_byconf
+      - model=protogcn20
+      - load_from=work_dirs/freeze_exclude_byconf/best_top1_acc_epoch_25.pth
+      - name=finetuning_exclude_byconf_strong_occlusion
+      - work_dir=work_dirs/finetuning_exclude_byconf_strong_occlusion
+
+  - name: finetuning_exclude_byconf_temporal_occlusion
+    overrides:
+      - experiment=temporal_occlusion
+      - data=exclude_byconf
+      - model=protogcn20
+      - load_from=work_dirs/freeze_exclude_byconf/best_top1_acc_epoch_25.pth
+      - name=finetuning_exclude_byconf_temporal_occlusion
+      - work_dir=work_dirs/finetuning_exclude_byconf_temporal_occlusion

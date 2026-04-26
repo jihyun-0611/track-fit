@@ -1,0 +1,36 @@
+runs:
+  - name: finetuning_bone
+    overrides:
+      - experiment=finetuning
+      - data=basic_bone
+      - model=protogcn22
+      - load_from=work_dirs/freeze_bone/best_top1_acc_epoch_20.pth
+      - name=finetuning_bone
+      - work_dir=work_dirs/finetuning_bone
+
+  - name: finetuning_exclude_bone
+    overrides:
+      - experiment=finetuning
+      - data=exclude_bone
+      - model=protogcn20
+      - load_from=work_dirs/freeze_exclude_bone/best_top1_acc_epoch_10.pth
+      - name=finetuning_exclude_bone
+      - work_dir=work_dirs/finetuning_exclude_bone
+  
+  - name: finetuning_byconf_bone
+    overrides:
+      - experiment=finetuning
+      - data=byconf_bone
+      - model=protogcn22
+      - load_from=work_dirs/freeze_byconf_bone/best_top1_acc_epoch_20.pth
+      - name=finetuning_byconf_bone
+      - work_dir=work_dirs/finetuning_byconf_bone
+
+  - name: finetuning_exclude_byconf_bone
+    overrides:
+      - experiment=finetuning
+      - data=exclude_byconf_bone
+      - model=protogcn20
+      - load_from=work_dirs/freeze_exclude_byconf_bone/best_top1_acc_epoch_25.pth
+      - name=finetuning_exclude_byconf_bone
+      - work_dir=work_dirs/finetuning_exclude_byconf_bone

@@ -238,19 +238,22 @@ class InterpolateOcclusions:
 
     Args:
         p (float): probability of applying the transform. Defaults to 1.0.
+        threshold (float): keypoint_score <= threshold is treated as invalid
+            and will be interpolated. Defaults to 0.0 (only score==0 frames).
 
     Required keys: 'keypoint', 'keypoint_score'.
 
     """
-    def __init__(self, p=1.0):
+    def __init__(self, p=1.0, threshold=0.0):
         self.p = p
+        self.threshold = threshold
 
     def __call__(self, results):
         from scipy import interpolate as sci_interp
 
         if np.random.rand() >= self.p:
             return results
-        
+
         keypoint = results['keypoint'] # (M, T, V, 2)
         keypoint_score = results['keypoint_score'] # (M, T, V)
         M, T, V, _ = keypoint.shape
@@ -259,7 +262,7 @@ class InterpolateOcclusions:
         for m in range(M):
             for k in range(V):
                 score = keypoint_score[m, :, k] # (T,)
-                valid = score > 0
+                valid = score > self.threshold
                 valid_ids = frame_ids[valid]
 
                 if valid_ids.size < 2:
@@ -281,9 +284,9 @@ class InterpolateOcclusions:
         results['keypoint'] = keypoint
         results['keypoint_score'] = keypoint_score
         return results
-    
+
     def __repr__(self):
-        return f'{self.__class__.__name__}(p={self.p})'
+        return f'{self.__class__.__name__}(p={self.p}, threshold={self.threshold})'
 
 
 class TemporalOcclusion:

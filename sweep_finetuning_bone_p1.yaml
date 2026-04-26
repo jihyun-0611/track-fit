@@ -1,0 +1,76 @@
+runs:
+  # basic_bone (random split, 22 classes)
+
+  - name: bone_finetuning_flip_only
+    overrides:
+      - experiment=bone_flip_only
+      - data=bone_basic
+      - load_from=work_dirs/bone_freeze/best_top1_acc_epoch_20.pth
+      - name=bone_finetuning_flip_only
+      - work_dir=work_dirs/bone_finetuning_flip_only
+
+  - name: bone_finetuning_temporal_occlusion
+    overrides:
+      - experiment=bone_temporal_occlusion
+      - data=bone_basic
+      - load_from=work_dirs/bone_freeze/best_top1_acc_epoch_20.pth
+      - name=bone_finetuning_temporal_occlusion
+      - work_dir=work_dirs/bone_finetuning_temporal_occlusion
+
+  # byconf_bone (confidence split, 22 classes)
+
+  - name: bone_finetuning_byconf_flip_only
+    overrides:
+      - experiment=bone_flip_only
+      - data=bone_byconf
+      - load_from=work_dirs/bone_freeze_byconf/best_top1_acc_epoch_20.pth
+      - name=bone_finetuning_byconf_flip_only
+      - work_dir=work_dirs/bone_finetuning_byconf_flip_only
+
+  - name: bone_finetuning_byconf_temporal_occlusion
+    overrides:
+      - experiment=bone_temporal_occlusion
+      - data=bone_byconf
+      - load_from=work_dirs/bone_freeze_byconf/best_top1_acc_epoch_20.pth
+      - name=bone_finetuning_byconf_temporal_occlusion
+      - work_dir=work_dirs/bone_finetuning_byconf_temporal_occlusion
+
+  # exclude_bone (random split + 클래스 제거, 20 classes)
+
+  - name: bone_finetuning_exclude_flip_only
+    overrides:
+      - experiment=bone_flip_only
+      - data=bone_exclude
+      - model=protogcn20
+      - load_from=work_dirs/bone_freeze_exclude/best_top1_acc_epoch_10.pth
+      - name=bone_finetuning_exclude_flip_only
+      - work_dir=work_dirs/bone_finetuning_exclude_flip_only
+
+  - name: bone_finetuning_exclude_temporal_occlusion
+    overrides:
+      - experiment=bone_temporal_occlusion
+      - data=bone_exclude
+      - model=protogcn20
+      - load_from=work_dirs/bone_freeze_exclude/best_top1_acc_epoch_10.pth
+      - name=bone_finetuning_exclude_temporal_occlusion
+      - work_dir=work_dirs/bone_finetuning_exclude_temporal_occlusion
+
+  # exclude_byconf_bone (confidence split + 클래스 제거, 20 classes)
+
+  - name: bone_finetuning_exclude_byconf_flip_only
+    overrides:
+      - experiment=bone_flip_only
+      - data=bone_exclude_byconf
+      - model=protogcn20
+      - load_from=work_dirs/bone_freeze_exclude_byconf/best_top1_acc_epoch_25.pth
+      - name=bone_finetuning_exclude_byconf_flip_only
+      - work_dir=work_dirs/bone_finetuning_exclude_byconf_flip_only
+
+  - name: bone_finetuning_exclude_byconf_temporal_occlusion
+    overrides:
+      - experiment=bone_temporal_occlusion
+      - data=bone_exclude_byconf
+      - model=protogcn20
+      - load_from=work_dirs/bone_freeze_exclude_byconf/best_top1_acc_epoch_25.pth
+      - name=bone_finetuning_exclude_byconf_temporal_occlusion
+      - work_dir=work_dirs/bone_finetuning_exclude_byconf_temporal_occlusion

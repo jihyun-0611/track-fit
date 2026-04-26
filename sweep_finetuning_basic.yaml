@@ -1,0 +1,70 @@
+runs:
+  - name: finetuning_basic_flip_only
+    overrides:
+      - experiment=flip_only
+      - load_from=work_dirs/freeze/best_top1_acc_epoch_25.pth
+      - name=finetuning_basic_flip_only
+      - work_dir=work_dirs/finetuning_basic_flip_only
+
+  - name: finetuning_basic_strong_aug
+    overrides:
+      - experiment=strong_aug
+      - load_from=work_dirs/freeze/best_top1_acc_epoch_25.pth
+      - name=finetuning_basic_strong_aug
+      - work_dir=work_dirs/finetuning_basic_strong_aug
+
+  - name: finetuning_basic_gradual_aug
+    overrides:
+      - experiment=gradual_aug
+      - load_from=work_dirs/freeze/best_top1_acc_epoch_25.pth
+      - name=finetuning_basic_gradual_aug
+      - work_dir=work_dirs/finetuning_basic_gradual_aug
+
+  - name: finetuning_basic_gradual_occlusion
+    overrides:
+      - experiment=gradual_occlusion
+      - load_from=work_dirs/freeze/best_top1_acc_epoch_25.pth
+      - name=finetuning_basic_gradual_occlusion
+      - work_dir=work_dirs/finetuning_basic_gradual_occlusion
+
+  - name: finetuning_basic_random_joint_mask
+    overrides:
+      - experiment=random_joint_mask
+      - load_from=work_dirs/freeze/best_top1_acc_epoch_25.pth
+      - name=finetuning_basic_random_joint_mask
+      - work_dir=work_dirs/finetuning_basic_random_joint_mask
+
+  - name: finetuning_basic_specific_occlusion
+    overrides:
+      - experiment=specific_occlusion
+      - load_from=work_dirs/freeze/best_top1_acc_epoch_25.pth
+      - name=finetuning_basic_specific_occlusion
+      - work_dir=work_dirs/finetuning_basic_specific_occlusion
+
+  - name: finetuning_basic_specific_occ_lower
+    overrides:
+      - experiment=specific_occ_lower
+      - load_from=work_dirs/freeze/best_top1_acc_epoch_25.pth
+      - name=finetuning_basic_specific_occ_lower
+      - work_dir=work_dirs/finetuning_basic_specific_occ_lower
+
+  - name: finetuning_basic_specific_occ_upper
+    overrides:
+      - experiment=specific_occ_upper
+      - load_from=work_dirs/freeze/best_top1_acc_epoch_25.pth
+      - name=finetuning_basic_specific_occ_upper
+      - work_dir=work_dirs/finetuning_basic_specific_occ_upper
+
+  - name: finetuning_basic_strong_occlusion
+    overrides:
+      - experiment=strong_occlusion
+      - load_from=work_dirs/freeze/best_top1_acc_epoch_25.pth
+      - name=finetuning_basic_strong_occlusion
+      - work_dir=work_dirs/finetuning_basic_strong_occlusion
+
+  - name: finetuning_basic_temporal_occlusion
+    overrides:
+      - experiment=temporal_occlusion
+      - load_from=work_dirs/freeze/best_top1_acc_epoch_25.pth
+      - name=finetuning_basic_temporal_occlusion
+      - work_dir=work_dirs/finetuning_basic_temporal_occlusion

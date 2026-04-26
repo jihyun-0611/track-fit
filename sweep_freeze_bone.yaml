@@ -1,0 +1,32 @@
+runs:
+  - name: bone_freeze
+    overrides:
+      - experiment=freeze
+      - data=bone_basic
+      - model=protogcn22
+      - name=bone_freeze
+      - work_dir=work_dirs/bone_freeze
+
+  - name: bone_freeze_exclude
+    overrides:
+      - experiment=freeze
+      - data=bone_exclude
+      - model=protogcn20
+      - name=bone_freeze_exclude
+      - work_dir=work_dirs/bone_freeze_exclude
+
+  - name: bone_freeze_byconf
+    overrides:
+      - experiment=freeze
+      - data=bone_byconf
+      - model=protogcn22
+      - name=bone_freeze_byconf
+      - work_dir=work_dirs/bone_freeze_byconf
+
+  - name: bone_freeze_exclude_byconf
+    overrides:
+      - experiment=freeze
+      - data=bone_exclude_byconf
+      - model=protogcn20
+      - name=bone_freeze_exclude_byconf
+      - work_dir=work_dirs/bone_freeze_exclude_byconf

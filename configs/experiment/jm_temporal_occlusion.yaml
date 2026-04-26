@@ -1,0 +1,24 @@
+# @package _global_
+name: jm_temporal_occlusion
+
+data:
+  train:
+    pipeline:
+      - type: UniformSampleFrames
+        clip_len: 100
+      - type: PoseDecode
+      - type: TemporalOcclusion
+        min_frames: 20
+        max_frames: 50
+        num_segments: 1
+        p: 0.5
+      - type: GenSkeFeat
+        dataset: coco_new
+        feats: [jm]
+      - type: FormatGCNInput
+        num_person: 1
+      - type: Collect
+        keys: [keypoint, label]
+        meta_keys: []
+      - type: ToTensor
+        keys: [keypoint]
