@@ -31,10 +31,11 @@ class UniformSampleFrames:
         self.clip_len = clip_len
         self.num_clips = num_clips
         self.seed = seed
-        self.p_interval = p_interval
-        if not isinstance(p_interval, tuple):
-            self.p_interval = (p_interval, p_interval)
-        
+        if isinstance(p_interval, (tuple, list)) or hasattr(p_interval, '__iter__'):
+            self.p_interval = (float(p_interval[0]), float(p_interval[1]))
+        else:
+            self.p_interval = (float(p_interval), float(p_interval))
+
         if len(deprecated_kwargs):
             warnings.warn('[UniformSampleFrames] The following args has been deprecated: ')
             for k, v in deprecated_kwargs.items():
@@ -193,9 +194,10 @@ class UniformSampleDecode:
         self.clip_len = clip_len
         self.num_clips = num_clips
         self.seed = seed
-        self.p_interval = p_interval
-        if not isinstance(p_interval, tuple):
-            self.p_interval = (p_interval, p_interval)
+        if isinstance(p_interval, (tuple, list)) or hasattr(p_interval, '__iter__'):
+            self.p_interval = (float(p_interval[0]), float(p_interval[1]))
+        else:
+            self.p_interval = (float(p_interval), float(p_interval))
 
     def _get_clips(self, full_kp, clip_len):
         """
