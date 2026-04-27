@@ -1,0 +1,221 @@
+runs:
+
+# ── basic (random split, 22 classes) ─────────────────────────────────────────
+
+  - name: bm_finetuning
+    overrides:
+      - data=bm_basic
+      - model=protogcn22
+      - ckpt_file=bm_freeze/best_top1_acc_epoch_25.pth
+      - name=bm_finetuning
+      - work_dir=work_dirs/bm_finetuning
+
+  - name: bm_finetuning_flip_only
+    overrides:
+      - experiment=bm_flip_only
+      - data=bm_basic
+      - model=protogcn22
+      - ckpt_file=bm_freeze/best_top1_acc_epoch_25.pth
+      - name=bm_finetuning_flip_only
+      - work_dir=work_dirs/bm_finetuning_flip_only
+
+  - name: bm_finetuning_temporal_crop
+    overrides:
+      - experiment=bm_temporal_crop
+      - data=bm_basic
+      - model=protogcn22
+      - ckpt_file=bm_freeze/best_top1_acc_epoch_25.pth
+      - name=bm_finetuning_temporal_crop
+      - work_dir=work_dirs/bm_finetuning_temporal_crop
+
+  - name: bm_finetuning_flip_temporal_crop
+    overrides:
+      - experiment=bm_flip_temporal_crop
+      - data=bm_basic
+      - model=protogcn22
+      - ckpt_file=bm_freeze/best_top1_acc_epoch_25.pth
+      - name=bm_finetuning_flip_temporal_crop
+      - work_dir=work_dirs/bm_finetuning_flip_temporal_crop
+
+  - name: bm_finetuning_temporal_occlusion
+    overrides:
+      - experiment=bm_temporal_occlusion
+      - data=bm_basic
+      - model=protogcn22
+      - ckpt_file=bm_freeze/best_top1_acc_epoch_25.pth
+      - name=bm_finetuning_temporal_occlusion
+      - work_dir=work_dirs/bm_finetuning_temporal_occlusion
+
+  - name: bm_finetuning_interp_temporal_occlusion
+    overrides:
+      - experiment=bm_interp_temporal_occlusion
+      - data=bm_basic
+      - model=protogcn22
+      - ckpt_file=bm_freeze/best_top1_acc_epoch_25.pth
+      - name=bm_finetuning_interp_temporal_occlusion
+      - work_dir=work_dirs/bm_finetuning_interp_temporal_occlusion
+
+# ── byconf (confidence split, 22 classes) ────────────────────────────────────
+
+  - name: bm_finetuning_byconf
+    overrides:
+      - data=bm_byconf
+      - model=protogcn22
+      - ckpt_file=bm_freeze_byconf/best_top1_acc_epoch_20.pth
+      - name=bm_finetuning_byconf
+      - work_dir=work_dirs/bm_finetuning_byconf
+
+  - name: bm_finetuning_byconf_flip_only
+    overrides:
+      - experiment=bm_flip_only
+      - data=bm_byconf
+      - model=protogcn22
+      - ckpt_file=bm_freeze_byconf/best_top1_acc_epoch_20.pth
+      - name=bm_finetuning_byconf_flip_only
+      - work_dir=work_dirs/bm_finetuning_byconf_flip_only
+
+  - name: bm_finetuning_byconf_temporal_crop
+    overrides:
+      - experiment=bm_temporal_crop
+      - data=bm_byconf
+      - model=protogcn22
+      - ckpt_file=bm_freeze_byconf/best_top1_acc_epoch_20.pth
+      - name=bm_finetuning_byconf_temporal_crop
+      - work_dir=work_dirs/bm_finetuning_byconf_temporal_crop
+
+  - name: bm_finetuning_byconf_flip_temporal_crop
+    overrides:
+      - experiment=bm_flip_temporal_crop
+      - data=bm_byconf
+      - model=protogcn22
+      - ckpt_file=bm_freeze_byconf/best_top1_acc_epoch_20.pth
+      - name=bm_finetuning_byconf_flip_temporal_crop
+      - work_dir=work_dirs/bm_finetuning_byconf_flip_temporal_crop
+
+  - name: bm_finetuning_byconf_temporal_occlusion
+    overrides:
+      - experiment=bm_temporal_occlusion
+      - data=bm_byconf
+      - model=protogcn22
+      - ckpt_file=bm_freeze_byconf/best_top1_acc_epoch_20.pth
+      - name=bm_finetuning_byconf_temporal_occlusion
+      - work_dir=work_dirs/bm_finetuning_byconf_temporal_occlusion
+
+  - name: bm_finetuning_byconf_interp_temporal_occlusion
+    overrides:
+      - experiment=bm_interp_temporal_occlusion
+      - data=bm_byconf
+      - model=protogcn22
+      - ckpt_file=bm_freeze_byconf/best_top1_acc_epoch_20.pth
+      - name=bm_finetuning_byconf_interp_temporal_occlusion
+      - work_dir=work_dirs/bm_finetuning_byconf_interp_temporal_occlusion
+
+# ── exclude (random split + class removal, 20 classes) ───────────────────────
+
+  - name: bm_finetuning_exclude
+    overrides:
+      - data=bm_exclude
+      - model=protogcn20
+      - ckpt_file=bm_freeze_exclude/best_top1_acc_epoch_30.pth
+      - name=bm_finetuning_exclude
+      - work_dir=work_dirs/bm_finetuning_exclude
+
+  - name: bm_finetuning_exclude_flip_only
+    overrides:
+      - experiment=bm_flip_only
+      - data=bm_exclude
+      - model=protogcn20
+      - ckpt_file=bm_freeze_exclude/best_top1_acc_epoch_30.pth
+      - name=bm_finetuning_exclude_flip_only
+      - work_dir=work_dirs/bm_finetuning_exclude_flip_only
+
+  - name: bm_finetuning_exclude_temporal_crop
+    overrides:
+      - experiment=bm_temporal_crop
+      - data=bm_exclude
+      - model=protogcn20
+      - ckpt_file=bm_freeze_exclude/best_top1_acc_epoch_30.pth
+      - name=bm_finetuning_exclude_temporal_crop
+      - work_dir=work_dirs/bm_finetuning_exclude_temporal_crop
+
+  - name: bm_finetuning_exclude_flip_temporal_crop
+    overrides:
+      - experiment=bm_flip_temporal_crop
+      - data=bm_exclude
+      - model=protogcn20
+      - ckpt_file=bm_freeze_exclude/best_top1_acc_epoch_30.pth
+      - name=bm_finetuning_exclude_flip_temporal_crop
+      - work_dir=work_dirs/bm_finetuning_exclude_flip_temporal_crop
+
+  - name: bm_finetuning_exclude_temporal_occlusion
+    overrides:
+      - experiment=bm_temporal_occlusion
+      - data=bm_exclude
+      - model=protogcn20
+      - ckpt_file=bm_freeze_exclude/best_top1_acc_epoch_30.pth
+      - name=bm_finetuning_exclude_temporal_occlusion
+      - work_dir=work_dirs/bm_finetuning_exclude_temporal_occlusion
+
+  - name: bm_finetuning_exclude_interp_temporal_occlusion
+    overrides:
+      - experiment=bm_interp_temporal_occlusion
+      - data=bm_exclude
+      - model=protogcn20
+      - ckpt_file=bm_freeze_exclude/best_top1_acc_epoch_30.pth
+      - name=bm_finetuning_exclude_interp_temporal_occlusion
+      - work_dir=work_dirs/bm_finetuning_exclude_interp_temporal_occlusion
+
+# ── exclude_byconf (confidence split + class removal, 20 classes) ─────────────
+
+  - name: bm_finetuning_exclude_byconf
+    overrides:
+      - data=bm_exclude_byconf
+      - model=protogcn20
+      - ckpt_file=bm_freeze_exclude_byconf/best_top1_acc_epoch_30.pth
+      - name=bm_finetuning_exclude_byconf
+      - work_dir=work_dirs/bm_finetuning_exclude_byconf
+
+  - name: bm_finetuning_exclude_byconf_flip_only
+    overrides:
+      - experiment=bm_flip_only
+      - data=bm_exclude_byconf
+      - model=protogcn20
+      - ckpt_file=bm_freeze_exclude_byconf/best_top1_acc_epoch_30.pth
+      - name=bm_finetuning_exclude_byconf_flip_only
+      - work_dir=work_dirs/bm_finetuning_exclude_byconf_flip_only
+
+  - name: bm_finetuning_exclude_byconf_temporal_crop
+    overrides:
+      - experiment=bm_temporal_crop
+      - data=bm_exclude_byconf
+      - model=protogcn20
+      - ckpt_file=bm_freeze_exclude_byconf/best_top1_acc_epoch_30.pth
+      - name=bm_finetuning_exclude_byconf_temporal_crop
+      - work_dir=work_dirs/bm_finetuning_exclude_byconf_temporal_crop
+
+  - name: bm_finetuning_exclude_byconf_flip_temporal_crop
+    overrides:
+      - experiment=bm_flip_temporal_crop
+      - data=bm_exclude_byconf
+      - model=protogcn20
+      - ckpt_file=bm_freeze_exclude_byconf/best_top1_acc_epoch_30.pth
+      - name=bm_finetuning_exclude_byconf_flip_temporal_crop
+      - work_dir=work_dirs/bm_finetuning_exclude_byconf_flip_temporal_crop
+
+  - name: bm_finetuning_exclude_byconf_temporal_occlusion
+    overrides:
+      - experiment=bm_temporal_occlusion
+      - data=bm_exclude_byconf
+      - model=protogcn20
+      - ckpt_file=bm_freeze_exclude_byconf/best_top1_acc_epoch_30.pth
+      - name=bm_finetuning_exclude_byconf_temporal_occlusion
+      - work_dir=work_dirs/bm_finetuning_exclude_byconf_temporal_occlusion
+
+  - name: bm_finetuning_exclude_byconf_interp_temporal_occlusion
+    overrides:
+      - experiment=bm_interp_temporal_occlusion
+      - data=bm_exclude_byconf
+      - model=protogcn20
+      - ckpt_file=bm_freeze_exclude_byconf/best_top1_acc_epoch_30.pth
+      - name=bm_finetuning_exclude_byconf_interp_temporal_occlusion
+      - work_dir=work_dirs/bm_finetuning_exclude_byconf_interp_temporal_occlusion

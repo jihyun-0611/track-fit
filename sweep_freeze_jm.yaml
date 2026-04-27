@@ -1,0 +1,36 @@
+runs:
+  - name: jm_freeze
+    overrides:
+      - experiment=freeze
+      - data=jm_basic
+      - model=protogcn22_p400
+      - ckpt_file=finegym_jm/best_top1_acc_epoch_133.pth
+      - name=jm_freeze
+      - work_dir=work_dirs/jm_freeze
+
+  - name: jm_freeze_exclude
+    overrides:
+      - experiment=freeze
+      - data=jm_exclude
+      - model=protogcn20_p400
+      - ckpt_file=finegym_jm/best_top1_acc_epoch_133.pth
+      - name=jm_freeze_exclude
+      - work_dir=work_dirs/jm_freeze_exclude
+
+  - name: jm_freeze_byconf
+    overrides:
+      - experiment=freeze
+      - data=jm_byconf
+      - model=protogcn22_p400
+      - ckpt_file=finegym_jm/best_top1_acc_epoch_133.pth
+      - name=jm_freeze_byconf
+      - work_dir=work_dirs/jm_freeze_byconf
+
+  - name: jm_freeze_exclude_byconf
+    overrides:
+      - experiment=freeze
+      - data=jm_exclude_byconf
+      - model=protogcn20_p400
+      - ckpt_file=finegym_jm/best_top1_acc_epoch_133.pth
+      - name=jm_freeze_exclude_byconf
+      - work_dir=work_dirs/jm_freeze_exclude_byconf

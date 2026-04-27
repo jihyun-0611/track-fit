@@ -1,0 +1,222 @@
+runs:
+# NOTE: Replace XX with actual best epoch number from jm_freeze runs after freeze completes.
+
+# ── basic (random split, 22 classes) ─────────────────────────────────────────
+
+  - name: jm_finetuning
+    overrides:
+      - data=jm_basic
+      - model=protogcn22_p400
+      - ckpt_file=jm_freeze/best_top1_acc_epoch_20.pth
+      - name=jm_finetuning
+      - work_dir=work_dirs/jm_finetuning
+
+  - name: jm_finetuning_flip_only
+    overrides:
+      - experiment=jm_flip_only
+      - data=jm_basic
+      - model=protogcn22_p400
+      - ckpt_file=jm_freeze/best_top1_acc_epoch_20.pth
+      - name=jm_finetuning_flip_only
+      - work_dir=work_dirs/jm_finetuning_flip_only
+
+  - name: jm_finetuning_temporal_crop
+    overrides:
+      - experiment=jm_temporal_crop
+      - data=jm_basic
+      - model=protogcn22_p400
+      - ckpt_file=jm_freeze/best_top1_acc_epoch_20.pth
+      - name=jm_finetuning_temporal_crop
+      - work_dir=work_dirs/jm_finetuning_temporal_crop
+
+  - name: jm_finetuning_flip_temporal_crop
+    overrides:
+      - experiment=jm_flip_temporal_crop
+      - data=jm_basic
+      - model=protogcn22_p400
+      - ckpt_file=jm_freeze/best_top1_acc_epoch_20.pth
+      - name=jm_finetuning_flip_temporal_crop
+      - work_dir=work_dirs/jm_finetuning_flip_temporal_crop
+
+  - name: jm_finetuning_temporal_occlusion
+    overrides:
+      - experiment=jm_temporal_occlusion
+      - data=jm_basic
+      - model=protogcn22_p400
+      - ckpt_file=jm_freeze/best_top1_acc_epoch_20.pth
+      - name=jm_finetuning_temporal_occlusion
+      - work_dir=work_dirs/jm_finetuning_temporal_occlusion
+
+  - name: jm_finetuning_interp_temporal_occlusion
+    overrides:
+      - experiment=jm_interp_temporal_occlusion
+      - data=jm_basic
+      - model=protogcn22_p400
+      - ckpt_file=jm_freeze/best_top1_acc_epoch_20.pth
+      - name=jm_finetuning_interp_temporal_occlusion
+      - work_dir=work_dirs/jm_finetuning_interp_temporal_occlusion
+
+# ── byconf (confidence split, 22 classes) ────────────────────────────────────
+
+  - name: jm_finetuning_byconf
+    overrides:
+      - data=jm_byconf
+      - model=protogcn22_p400
+      - ckpt_file=jm_freeze_byconf/best_top1_acc_epoch_10.pth
+      - name=jm_finetuning_byconf
+      - work_dir=work_dirs/jm_finetuning_byconf
+
+  - name: jm_finetuning_byconf_flip_only
+    overrides:
+      - experiment=jm_flip_only
+      - data=jm_byconf
+      - model=protogcn22_p400
+      - ckpt_file=jm_freeze_byconf/best_top1_acc_epoch_10.pth
+      - name=jm_finetuning_byconf_flip_only
+      - work_dir=work_dirs/jm_finetuning_byconf_flip_only
+
+  - name: jm_finetuning_byconf_temporal_crop
+    overrides:
+      - experiment=jm_temporal_crop
+      - data=jm_byconf
+      - model=protogcn22_p400
+      - ckpt_file=jm_freeze_byconf/best_top1_acc_epoch_10.pth
+      - name=jm_finetuning_byconf_temporal_crop
+      - work_dir=work_dirs/jm_finetuning_byconf_temporal_crop
+
+  - name: jm_finetuning_byconf_flip_temporal_crop
+    overrides:
+      - experiment=jm_flip_temporal_crop
+      - data=jm_byconf
+      - model=protogcn22_p400
+      - ckpt_file=jm_freeze_byconf/best_top1_acc_epoch_10.pth
+      - name=jm_finetuning_byconf_flip_temporal_crop
+      - work_dir=work_dirs/jm_finetuning_byconf_flip_temporal_crop
+
+  - name: jm_finetuning_byconf_temporal_occlusion
+    overrides:
+      - experiment=jm_temporal_occlusion
+      - data=jm_byconf
+      - model=protogcn22_p400
+      - ckpt_file=jm_freeze_byconf/best_top1_acc_epoch_10.pth
+      - name=jm_finetuning_byconf_temporal_occlusion
+      - work_dir=work_dirs/jm_finetuning_byconf_temporal_occlusion
+
+  - name: jm_finetuning_byconf_interp_temporal_occlusion
+    overrides:
+      - experiment=jm_interp_temporal_occlusion
+      - data=jm_byconf
+      - model=protogcn22_p400
+      - ckpt_file=jm_freeze_byconf/best_top1_acc_epoch_10.pth
+      - name=jm_finetuning_byconf_interp_temporal_occlusion
+      - work_dir=work_dirs/jm_finetuning_byconf_interp_temporal_occlusion
+
+# ── exclude (random split + class removal, 20 classes) ───────────────────────
+
+  - name: jm_finetuning_exclude
+    overrides:
+      - data=jm_exclude
+      - model=protogcn20_p400
+      - ckpt_file=jm_freeze_exclude/best_top1_acc_epoch_20.pth
+      - name=jm_finetuning_exclude
+      - work_dir=work_dirs/jm_finetuning_exclude
+
+  - name: jm_finetuning_exclude_flip_only
+    overrides:
+      - experiment=jm_flip_only
+      - data=jm_exclude
+      - model=protogcn20_p400
+      - ckpt_file=jm_freeze_exclude/best_top1_acc_epoch_20.pth
+      - name=jm_finetuning_exclude_flip_only
+      - work_dir=work_dirs/jm_finetuning_exclude_flip_only
+
+  - name: jm_finetuning_exclude_temporal_crop
+    overrides:
+      - experiment=jm_temporal_crop
+      - data=jm_exclude
+      - model=protogcn20_p400
+      - ckpt_file=jm_freeze_exclude/best_top1_acc_epoch_20.pth
+      - name=jm_finetuning_exclude_temporal_crop
+      - work_dir=work_dirs/jm_finetuning_exclude_temporal_crop
+
+  - name: jm_finetuning_exclude_flip_temporal_crop
+    overrides:
+      - experiment=jm_flip_temporal_crop
+      - data=jm_exclude
+      - model=protogcn20_p400
+      - ckpt_file=jm_freeze_exclude/best_top1_acc_epoch_20.pth
+      - name=jm_finetuning_exclude_flip_temporal_crop
+      - work_dir=work_dirs/jm_finetuning_exclude_flip_temporal_crop
+
+  - name: jm_finetuning_exclude_temporal_occlusion
+    overrides:
+      - experiment=jm_temporal_occlusion
+      - data=jm_exclude
+      - model=protogcn20_p400
+      - ckpt_file=jm_freeze_exclude/best_top1_acc_epoch_20.pth
+      - name=jm_finetuning_exclude_temporal_occlusion
+      - work_dir=work_dirs/jm_finetuning_exclude_temporal_occlusion
+
+  - name: jm_finetuning_exclude_interp_temporal_occlusion
+    overrides:
+      - experiment=jm_interp_temporal_occlusion
+      - data=jm_exclude
+      - model=protogcn20_p400
+      - ckpt_file=jm_freeze_exclude/best_top1_acc_epoch_20.pth
+      - name=jm_finetuning_exclude_interp_temporal_occlusion
+      - work_dir=work_dirs/jm_finetuning_exclude_interp_temporal_occlusion
+
+# ── exclude_byconf (confidence split + class removal, 20 classes) ─────────────
+
+  - name: jm_finetuning_exclude_byconf
+    overrides:
+      - data=jm_exclude_byconf
+      - model=protogcn20_p400
+      - ckpt_file=jm_freeze_exclude_byconf/best_top1_acc_epoch_30.pth
+      - name=jm_finetuning_exclude_byconf
+      - work_dir=work_dirs/jm_finetuning_exclude_byconf
+
+  - name: jm_finetuning_exclude_byconf_flip_only
+    overrides:
+      - experiment=jm_flip_only
+      - data=jm_exclude_byconf
+      - model=protogcn20_p400
+      - ckpt_file=jm_freeze_exclude_byconf/best_top1_acc_epoch_30.pth
+      - name=jm_finetuning_exclude_byconf_flip_only
+      - work_dir=work_dirs/jm_finetuning_exclude_byconf_flip_only
+
+  - name: jm_finetuning_exclude_byconf_temporal_crop
+    overrides:
+      - experiment=jm_temporal_crop
+      - data=jm_exclude_byconf
+      - model=protogcn20_p400
+      - ckpt_file=jm_freeze_exclude_byconf/best_top1_acc_epoch_30.pth
+      - name=jm_finetuning_exclude_byconf_temporal_crop
+      - work_dir=work_dirs/jm_finetuning_exclude_byconf_temporal_crop
+
+  - name: jm_finetuning_exclude_byconf_flip_temporal_crop
+    overrides:
+      - experiment=jm_flip_temporal_crop
+      - data=jm_exclude_byconf
+      - model=protogcn20_p400
+      - ckpt_file=jm_freeze_exclude_byconf/best_top1_acc_epoch_30.pth
+      - name=jm_finetuning_exclude_byconf_flip_temporal_crop
+      - work_dir=work_dirs/jm_finetuning_exclude_byconf_flip_temporal_crop
+
+  - name: jm_finetuning_exclude_byconf_temporal_occlusion
+    overrides:
+      - experiment=jm_temporal_occlusion
+      - data=jm_exclude_byconf
+      - model=protogcn20_p400
+      - ckpt_file=jm_freeze_exclude_byconf/best_top1_acc_epoch_30.pth
+      - name=jm_finetuning_exclude_byconf_temporal_occlusion
+      - work_dir=work_dirs/jm_finetuning_exclude_byconf_temporal_occlusion
+
+  - name: jm_finetuning_exclude_byconf_interp_temporal_occlusion
+    overrides:
+      - experiment=jm_interp_temporal_occlusion
+      - data=jm_exclude_byconf
+      - model=protogcn20_p400
+      - ckpt_file=jm_freeze_exclude_byconf/best_top1_acc_epoch_30.pth
+      - name=jm_finetuning_exclude_byconf_interp_temporal_occlusion
+      - work_dir=work_dirs/jm_finetuning_exclude_byconf_interp_temporal_occlusion

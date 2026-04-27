@@ -1,0 +1,36 @@
+runs:
+  - name: bm_freeze
+    overrides:
+      - experiment=freeze
+      - data=bm_basic
+      - model=protogcn22
+      - ckpt_file=finegym_bm/best_top1_acc_epoch_144.pth
+      - name=bm_freeze
+      - work_dir=work_dirs/bm_freeze
+
+  - name: bm_freeze_exclude
+    overrides:
+      - experiment=freeze
+      - data=bm_exclude
+      - model=protogcn20
+      - ckpt_file=finegym_bm/best_top1_acc_epoch_144.pth
+      - name=bm_freeze_exclude
+      - work_dir=work_dirs/bm_freeze_exclude
+
+  - name: bm_freeze_byconf
+    overrides:
+      - experiment=freeze
+      - data=bm_byconf
+      - model=protogcn22
+      - ckpt_file=finegym_bm/best_top1_acc_epoch_144.pth
+      - name=bm_freeze_byconf
+      - work_dir=work_dirs/bm_freeze_byconf
+
+  - name: bm_freeze_exclude_byconf
+    overrides:
+      - experiment=freeze
+      - data=bm_exclude_byconf
+      - model=protogcn20
+      - ckpt_file=finegym_bm/best_top1_acc_epoch_144.pth
+      - name=bm_freeze_exclude_byconf
+      - work_dir=work_dirs/bm_freeze_exclude_byconf
