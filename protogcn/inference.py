@@ -124,6 +124,89 @@ def inference_recognizer(model, data, outputs=None, as_tensor=True, top_k=5):
     return top_k_label
 
 
+class EnsembleRecognizer:
+    """Multi-stream ensemble recognizer for inference.
+
+    Loads N models (e.g. j/ b/ jm / bm streams), runs each stream's 
+    full preprocessing pipeline on the same raw keypoint input, and 
+    returns a weighted-average prediction.
+    """
+    def __init__(self, streams, weights=None, device='cuda:0'):
+        """"
+        Args:
+            streams (list[dict]): Each dict must have:
+                - 'config' : str (yaml path) or DictConfig
+                - 'checkpoint' : str (checkpoint path)
+            weights (list[float] | None): Per-stream weights. None -> equal weights.
+            device (str): Target device. Default: 'cuda:0'
+        """
+        self.device = device
+        self.models = []
+        self.pipelines = []
+
+        for s in streams:
+            model = init_recognizer(s['config'], s['checkpoint'], device)
+            self.models.append(model)
+
+            pipeline_src = model.cfg.data.get('test', model.cfg.data.get('val'))
+            pipeline_cfg = OmegaConf.to_container(pipeline_src.pipeline)
+            self.pipelines.append(Compose(pipeline_cfg))
+
+        n = len(self.models)
+        if weights is None:
+            self.weights = [1.0 / n] * n
+        else:
+            total = sum(weights)
+            self.weights = [w / total for w in weights]
+    
+    def _score_one_stream(self, model, pipeline, keypoint):
+        """Run a single stream and return (num_classes,) numpy score array."""
+        data = dict(
+            keypoint=keypoint,
+            total_frames=keypoint.shape[1],
+            label=-1,
+            start_index=0,
+            modality='Pose',
+            test_mode=True,
+        )
+        data = pipeline(data)
+
+        kp = data['keypoint']
+        if not isinstance(kp, torch.Tensor):
+            kp = torch.FloatTensor(kp)
+        kp = kp.to(self.device)  # (num_clips, M, T, V, C) -> backbone expects (N, M, T, V, C)
+
+        probs, _ = inference_similarity(model, kp)  # (num_clips, num_classes)
+        return probs.mean(0).cpu().numpy()           # (num_classes,)
+
+    
+    def predict(self, keypoint, top_k=5):
+        """Ensemble inference on a single skeleton sequence.
+
+        Args:
+            keypoint (np.ndarray): Raw joint coordinates, shape (M, T, V, C).
+            top_k (int): Number of top predictions to return. Default: 5.
+
+        Returns:
+            list[tuple(int, float)]: Top-k (class_index, score) pairs,
+                sorted by score descending.
+        """
+        assert isinstance(keypoint, np.ndarray) and keypoint.ndim == 4, \
+            'keypoint must be a numpy array with shape (M, T, V, C)'
+        
+        fused = None
+        for model, pipeline, w in zip(self.models, self.pipelines, self.weights):
+            scores = self._score_one_stream(model, pipeline, keypoint)
+            fused = w * scores if fused is None else fused + w * scores
+
+        topk_indices = np.argsort(fused)[::-1][:top_k]
+        topk_scores = fused[topk_indices]
+        return topk_indices, topk_scores # (top_k,), (top_k,)
+    
+    def __call__(self, keypoint, top_k=5):
+        return self.predict(keypoint, top_k)
+
+
 @torch.no_grad()
 def inference_similarity(model, keypoint):
     """
@@ -148,7 +231,7 @@ def inference_similarity(model, keypoint):
 
     # memory bank m_k
     # avg_f : (256, num_classes)
-    m = model.cls_head.avg_f.to(device) # (h, K)
+    m = model.cls_head.csc_loss.avg_f.to(device) # (h, K)
     m = m.T  # (K, h)
     m = F.normalize(m, p=2, dim=1) # L2
 
