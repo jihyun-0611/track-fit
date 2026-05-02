@@ -317,18 +317,18 @@ class JointToBone:
         elif self.dataset == 'coco_new':
             self.pairs = ((0, 19), (1, 0), (2, 0), (3, 1), (4, 2), (5, 19), (6, 19), (7, 5), (8, 6), (9, 7), (10, 8),
                           (11, 17), (12, 17), (13, 11), (14, 12), (15, 13), (16, 14), (17, 18), (18, 19), (19, 19))
-        
+        self._v1_idx = [v1 for v1, v2 in self.pairs]
+        self._v2_idx = [v2 for v1, v2 in self.pairs]
+
     def __call__(self, results):
         keypoint = results['keypoint']
         M, T, V, C = keypoint.shape
         bone = np.zeros((M, T, V, C), dtype=np.float32)
 
         assert C in [2, 3]
-        for v1, v2 in self.pairs:
-            bone[..., v1, :] = keypoint[..., v1, :] - keypoint[..., v2, :]
-            if C==3 and self.dataset in ['openpose', 'openpose_new', 'coco', 'coco_new', 'handmp']:
-                score = (keypoint[..., v1, 2] + keypoint[..., v2, 2]) / 2
-                bone[..., v1, 2] = score
+        bone[..., self._v1_idx, :] = keypoint[..., self._v1_idx, :] - keypoint[..., self._v2_idx, :]
+        if C == 3 and self.dataset in ['openpose', 'openpose_new', 'coco', 'coco_new', 'handmp']:
+            bone[..., self._v1_idx, 2] = (keypoint[..., self._v1_idx, 2] + keypoint[..., self._v2_idx, 2]) / 2
 
         results[self.target] = bone
         return results
@@ -356,20 +356,20 @@ class JointToKB:
             self.pairs = ((0, 0), (1, 1), (2, 2), (3, 0), (4, 0), (5, 5), (6, 6), (7, 0), (8, 0), (9, 5), (10, 6),
                           (11, 11), (12, 12), (13, 0), (14, 0), (15, 11), (16, 12))
         elif self.dataset == 'coco_new':
-            self.pairs = ((0, 0), (1, 19), (2, 19), (3, 0), (4, 0), (5, 5), (6, 6), (7, 19), (8, 19), (9, 5), 
+            self.pairs = ((0, 0), (1, 19), (2, 19), (3, 0), (4, 0), (5, 5), (6, 6), (7, 19), (8, 19), (9, 5),
                           (10, 6),(11, 18), (12, 18), (13, 17), (14, 17), (15, 11), (16, 12), (17, 19), (18, 18), (19, 19))
-            
+        self._v1_idx = [v1 for v1, v2 in self.pairs]
+        self._v2_idx = [v2 for v1, v2 in self.pairs]
+
     def __call__(self, results):
         keypoint = results['keypoint']
         M, T, V, C = keypoint.shape
         bone = np.zeros((M, T, V, C), dtype=np.float32)
 
         assert C in [2, 3]
-        for v1, v2 in self.pairs:
-            bone[..., v1, :] = keypoint[..., v1, :] - keypoint[..., v2, :]
-            if C == 3 and self.dataset in ['openpose', 'coco']:
-                score = (keypoint[..., v1, 2] + keypoint[..., v2, 2]) / 2
-                bone[..., v1, 2] = score
+        bone[..., self._v1_idx, :] = keypoint[..., self._v1_idx, :] - keypoint[..., self._v2_idx, :]
+        if C == 3 and self.dataset in ['openpose', 'coco']:
+            bone[..., self._v1_idx, 2] = (keypoint[..., self._v1_idx, 2] + keypoint[..., self._v2_idx, 2]) / 2
 
         results[self.target] = bone
         return results

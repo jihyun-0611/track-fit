@@ -56,6 +56,7 @@ def init_recognizer(config, checkpoint=None, device='cuda:0'):
     model.cfg = config
     model.to(device)
     model.eval()
+    model = torch.compile(model, mode='default') # 
     return model
 
 
