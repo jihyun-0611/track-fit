@@ -1,115 +1,127 @@
-from fastapi import FastAPI, File, UploadFile, WebSocket, WebSocketDisconnect
+import sys
+import os
+from pathlib import Path
+
+APP_DIR = Path(__file__).resolve().parent
+DEMO_DIR = APP_DIR.parent
+PROJECT_ROOT = DEMO_DIR.parent
+
+sys.path.insert(0, str(PROJECT_ROOT))
+sys.path.insert(0, str(DEMO_DIR / 'extractor'))
+sys.path.insert(0, str(DEMO_DIR / 'inferencer'))
+
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-import httpx
 import json
 import base64
 import numpy as np
 import cv2
-import asyncio
+import mediapipe as mp
+from dotenv import load_dotenv
 
+from utils import mediapipe_to_coco
+from inference import DemoInference
+
+load_dotenv(PROJECT_ROOT / '.env')
 
 app = FastAPI(title="TrackFit Demo")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-MEDIAPIPE_URL = "http://localhost:8001"
-PROTOGCN_URL = "http://localhost:8002"
+mp_pose = mp.solutions.pose
+pose = mp_pose.Pose(
+    static_image_mode=False,
+    model_complexity=1,
+    min_detection_confidence=0.5,
+    min_tracking_confidence=0.5,
+)
+
+CONFIGS = str(PROJECT_ROOT / 'configs/exercise')
+CKPTS = str(PROJECT_ROOT / 'work_dirs')
+
+model = DemoInference(
+    streams=[
+        {'config': f'{CONFIGS}/j.yaml',  'checkpoint': f'{CKPTS}/finetuning_exclude_flip_only/best_top1_acc_epoch_50.pth'},
+        {'config': f'{CONFIGS}/b.yaml',  'checkpoint': f'{CKPTS}/bone_finetuning_exclude_flip_only/best_top1_acc_epoch_30.pth'},
+        {'config': f'{CONFIGS}/jm.yaml', 'checkpoint': f'{CKPTS}/jm_finetuning_exclude_flip_only/best_top1_acc_epoch_25.pth'},
+        {'config': f'{CONFIGS}/bm.yaml', 'checkpoint': f'{CKPTS}/bm_finetuning_exclude_flip_temporal_crop/best_top1_acc_epoch_40.pth'},
+    ],
+    weights=[4, 3, 2, 2],
+)
+
 
 @app.get("/")
 async def home():
     with open("static/index.html", "r") as f:
         return HTMLResponse(content=f.read())
 
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    selected_exercise = None  # Track currently selected exercise
+    selected_exercise = None
 
-    # Increase timeout for quality assessment (which can take longer)
-    timeout = httpx.Timeout(30.0, connect=10.0)  # 30s read, 10s connect
-    async with httpx.AsyncClient(timeout=timeout) as client:
-        try:
-            while True:
-                data = await websocket.receive_text()
+    try:
+        while True:
+            data = await websocket.receive_text()
 
-                # Check if message is JSON (exercise selection) or base64 image
-                try:
-                    message = json.loads(data)
-                    if message.get("type") == "exercise_selection":
-                        selected_exercise = message.get("exercise")
-                        continue
-                except json.JSONDecodeError:
-                    # Not JSON, treat as base64 image data
-                    pass
+            try:
+                message = json.loads(data)
+                if message.get("type") == "exercise_selection":
+                    selected_exercise = message.get("exercise")
+                    continue
+            except json.JSONDecodeError:
+                pass
 
-                img_data = base64.b64decode(data.split(",")[1])
+            img_data = base64.b64decode(data.split(",")[1])
+            nparr = np.frombuffer(img_data, np.uint8)
+            frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
-                mp_response = await client.post(
-                    f"{MEDIAPIPE_URL}/extract_keypoints",
-                    files={'file': ('frame.jpg', img_data, 'image/jpeg')}
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            results = pose.process(frame_rgb)
+
+            if results.pose_landmarks:
+                keypoints = mediapipe_to_coco(
+                    results.pose_landmarks,
+                    frame.shape[1],
+                    frame.shape[0],
                 )
-                mp_results = mp_response.json()
+                keypoints_list = keypoints.tolist()
 
-                if mp_results["success"]:
-                    keypoints = mp_results["keypoints"]  # COCO format: [[x, y, visibility], ...]
-                    
-                    # COCO 포맷 키포인트를 ProtoGCN 형식으로 변환 (flatten)
-                    flattened_keypoints = []
-                    for joint in keypoints:
-                        if len(joint) >= 3:
-                            flattened_keypoints.extend([joint[0], joint[1], joint[2]])  # x, y, visibility
-                        else:
-                            flattened_keypoints.extend([0.0, 0.0, 0.0])  # 기본값
-                    
-                    # ProtoGCN에 프레임 추가 및 예측 요청 (선택한 운동 종류 포함)
-                    gcn_request_data = {"keypoints": flattened_keypoints}
-                    if selected_exercise:
-                        gcn_request_data["selected_exercise"] = selected_exercise
+                model.add_frame(keypoints)
 
-                    gcn_response = await client.post(
-                        f"{PROTOGCN_URL}/add_frame",
-                        json=gcn_request_data
-                    )
-                    gcn_results = gcn_response.json()
-                    
-                    # 각 관절의 스코어 계산 (COCO 포맷 기준)
-                    joint_scores = []
-                    for i, joint in enumerate(keypoints):
-                        if len(joint) >= 3:
-                            x, y, visibility = joint[0], joint[1], joint[2]
-                            joint_scores.append({
-                                "joint_id": i,
-                                "position": [x, y, 0],  # z는 0으로 설정
-                                "score": visibility
-                            })
+                response_data = {
+                    "status": "pose_detected",
+                    "keypoints": keypoints_list,
+                    "joint_scores": [
+                        {"joint_id": i, "position": [kp[0], kp[1], 0], "score": kp[2]}
+                        for i, kp in enumerate(keypoints_list)
+                    ],
+                    "buffer_count": len(model.buffer),
+                }
 
-                    response_data = {
-                        "status": "pose_detected",
-                        "keypoints": keypoints,
-                        "joint_scores": joint_scores,
-                        "buffer_count": gcn_results.get("buffer_count", 0)
-                    }
-                    
-                    # 예측 결과가 있으면 추가
-                    if gcn_results.get("prediction"):
-                        response_data["prediction"] = gcn_results["prediction"]
+                if len(model.buffer) >= 60 and len(model.buffer) % 60 == 0:
+                    prediction = model.predict_rolling_window(selected_exercise=selected_exercise)
+                    if prediction:
+                        response_data["status"] = "predicted"
+                        response_data["prediction"] = prediction
 
-                    # 자동 리셋 상태 처리
-                    if gcn_results.get("status") == "auto_reset":
-                        response_data["status"] = "auto_reset"
+                if len(model.buffer) >= 300:
+                    model.reset_buffer()
+                    response_data["status"] = "auto_reset"
+                    response_data["buffer_count"] = 0
 
-                    await websocket.send_text(json.dumps(response_data))
-                else:
-                    await websocket.send_text(json.dumps({
-                        "status": "no_pose",
-                        "keypoints": [],
-                        "joint_scores": []
-                    }))
-        except WebSocketDisconnect:
-            pass
+                await websocket.send_text(json.dumps(response_data))
+            else:
+                await websocket.send_text(json.dumps({
+                    "status": "no_pose",
+                    "keypoints": [],
+                    "joint_scores": [],
+                }))
+    except WebSocketDisconnect:
+        pass
 
 
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
-    
