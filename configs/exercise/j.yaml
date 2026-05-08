@@ -18,7 +18,7 @@ model:
   cls_head:
     type: Head
     joint_cfg: coco_new
-    num_classes: 22
+    num_classes: 20
     in_channels: 384
     weight: 0.2
     dropout: 0.5
