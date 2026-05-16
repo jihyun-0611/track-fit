@@ -1,0 +1,16 @@
+runs:
+  - name: freeze_exclude
+    overrides:
+      - experiment=freeze
+      - data=exclude
+      - model=protogcn20
+      - name=freeze_exclude
+      - work_dir=work_dirs/freeze_exclude
+
+  - name: freeze_exclude_byconf
+    overrides:
+      - experiment=freeze
+      - data=exclude_byconf
+      - model=protogcn20
+      - name=freeze_exclude_byconf
+      - work_dir=work_dirs/freeze_exclude_byconf

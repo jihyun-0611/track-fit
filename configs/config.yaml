@@ -14,7 +14,7 @@ compile: false
 validate: true
 test_last: false
 test_best: true
-auto_resume: true
+auto_resume: false
 resume_from: null
 ckpt_dir: ${oc.env:WORK_DIR,}
 ckpt_file: finegym_b/best_top1_acc_epoch_137.pth

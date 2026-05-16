@@ -1,0 +1,40 @@
+runs:
+
+# exclude
+  - name: interpolate_occlusions_exclude
+    overrides:
+      - experiment=interpolate_occlusions
+      - data=exclude
+      - model=protogcn20
+      - load_from=work_dirs/freeze_exclude/best_top1_acc_epoch_20.pth
+      - name=interpolate_occlusions_exclude
+      - work_dir=work_dirs/interpolate_occlusions_exclude
+
+  - name: interp_temporal_occlusion_exclude
+    overrides:
+      - experiment=interp_temporal_occlusion
+      - data=exclude
+      - model=protogcn20
+      - load_from=work_dirs/freeze_exclude/best_top1_acc_epoch_20.pth
+      - name=interp_temporal_occlusion_exclude
+      - work_dir=work_dirs/interp_temporal_occlusion_exclude
+
+
+# exclude_byconf
+  - name: interpolate_occlusions_exclude_byconf
+    overrides:
+      - experiment=interpolate_occlusions
+      - data=exclude_byconf
+      - model=protogcn20
+      - load_from=work_dirs/freeze_exclude_byconf/best_top1_acc_epoch_25.pth
+      - name=interpolate_occlusions_exclude_byconf
+      - work_dir=work_dirs/interpolate_occlusions_exclude_byconf
+
+  - name: interp_temporal_occlusion_exclude_byconf
+    overrides:
+      - experiment=interp_temporal_occlusion
+      - data=exclude_byconf
+      - model=protogcn20
+      - load_from=work_dirs/freeze_exclude_byconf/best_top1_acc_epoch_25.pth
+      - name=interp_temporal_occlusion_exclude_byconf
+      - work_dir=work_dirs/interp_temporal_occlusion_exclude_byconf

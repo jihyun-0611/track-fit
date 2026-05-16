@@ -21,3 +21,4 @@ hydra_multirun/
 *.pkl
 wandb/
 reports/
+AGENTS.md
