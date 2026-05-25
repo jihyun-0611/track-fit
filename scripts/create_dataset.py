@@ -8,18 +8,21 @@ from pathlib import Path
 from sklearn.model_selection import train_test_split
 
 
+NUM_COCO_KEYPOINTS = 17
+
+
 def load_from_pickle(pkl_path):
     with open(pkl_path, 'rb') as f:
         data = pickle.load(f)
     
     total_frames = max(d['frame_idx'] for d in data) + 1
-    keypoint = np.zeros((1, total_frames, 20, 2), dtype=np.float32)
-    keypoint_score = np.zeros((1, total_frames, 20), dtype=np.float32)
+    keypoint = np.zeros((1, total_frames, NUM_COCO_KEYPOINTS, 2), dtype=np.float32)
+    keypoint_score = np.zeros((1, total_frames, NUM_COCO_KEYPOINTS), dtype=np.float32)
 
     for frame_data in data:
         fi = frame_data['frame_idx']
         if frame_data['poses']:
-            for j, kp in enumerate(frame_data['poses'][0]['keypoints'][:20]):
+            for j, kp in enumerate(frame_data['poses'][0]['keypoints'][:NUM_COCO_KEYPOINTS]):
                 keypoint[0, fi, j, 0] = kp['x']
                 keypoint[0, fi, j, 1] = kp['y']
                 keypoint_score[0, fi, j] = kp['confidence']
@@ -29,7 +32,7 @@ def load_from_pickle(pkl_path):
 def load_from_json(json_path):
     """
     Returns:
-        keypoint: shape (M, T, V, C) - M=1, T=프레임수, V=20, C=2
+        keypoint: shape (M, T, V, C) - M=1, T=프레임수, V=17, C=2
         keypoint_score: shape (M, T, V)
     """
     with open(json_path, 'r', encoding='utf-8') as f:
@@ -37,7 +40,7 @@ def load_from_json(json_path):
     
     total_frames = max(d['frame_idx'] for d in data) + 1
     num_person = 1
-    num_joints = 20
+    num_joints = NUM_COCO_KEYPOINTS
 
     keypoint = np.zeros((num_person, total_frames, num_joints, 2), dtype=np.float32)
     keypoint_score = np.zeros((num_person, total_frames, num_joints), dtype=np.float32)

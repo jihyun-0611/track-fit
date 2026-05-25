@@ -159,3 +159,52 @@ def save_checkpoint(model, optimizer, scheduler, epoch, work_dir, filename, **kw
         'scheduler': scheduler.state_dict(),
         **kwargs
     }, osp.join(work_dir, filename))
+
+
+def mrlines(fname, sp='\n'):
+    f = open(fname).read().split(sp)
+    while f != [] and f[-1] == '':
+        f = f[:-1]
+    return f
+
+
+def intop(pred, label, n):
+    pred = [np.argsort(x)[-n:] for x in pred]
+    hit = [(l in p) for l, p in zip(label, pred)]
+    return hit
+
+
+def comb(scores, coeffs):
+    ret = [x * coeffs[0] for x in scores[0]]
+    for i in range(1, len(scores)):
+        ret = [x + y for x, y in zip(ret, [x * coeffs[i] for x in scores[i]])]
+    return ret
+
+
+def top1(score, label):
+    return np.mean(intop(score, label, 1))
+
+
+def topk(score, label, k=1):
+    return np.mean(intop(score, label, k)) if isinstance(k, int) else [topk(score, label, kk) for kk in k]
+
+
+def load_label(ann, split=None):
+    if ann.endswith('.txt'):
+        lines = mrlines(ann)
+        return [int(x.split()[-1]) for x in lines]
+    elif ann.endswith('.pkl'):
+        data = lpkl(ann)
+        if split is not None:
+            split = set(data['split'][split])
+            assert 'annos' in data or 'annotations' in data
+            annotations = data['annos'] if 'annos' in data else data['annotations']
+            key_name = 'frame_dir' if 'frame_dir' in annotations[0] else 'filename'
+            data = [x for x in annotations if x[key_name] in split]
+        return [x['label'] for x in data]
+    else:
+        raise NotImplemented
+    
+
+def lpkl(pth):
+    return pickle.load(open(pth, 'rb'))
