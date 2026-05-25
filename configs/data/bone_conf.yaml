@@ -1,6 +1,6 @@
 data_dir: ${oc.env:DATA_DIR}
-dataset_file: exercise_dataset.pkl
-label_map: ${data.data_dir}/exercise_dataset_label_mapping.json
+dataset_file: dataset_conf.pkl
+label_map: ${data.data_dir}/dataset_conf_label_mapping.json
 
 video_per_gpu: 16
 workers_per_gpu: 4
@@ -15,7 +15,7 @@ train:
     - type: PoseDecode
     - type: GenSkeFeat
       dataset: coco_new
-      feats: [j]
+      feats: [b]
     - type: FormatGCNInput
       num_person: 1
     - type: Collect
@@ -33,7 +33,7 @@ val:
     - type: PoseDecode
     - type: GenSkeFeat
       dataset: coco_new
-      feats: [j]
+      feats: [b]
     - type: FormatGCNInput
       num_person: 1
     - type: Collect
@@ -51,7 +51,7 @@ test:
     - type: PoseDecode
     - type: GenSkeFeat
       dataset: coco_new
-      feats: [j]
+      feats: [b]
     - type: FormatGCNInput
       num_person: 1
     - type: Collect
