@@ -70,6 +70,23 @@ def validate(model, val_loader, val_dataset, eval_cfg, logger):
     return eval_results
 
 
+def get_final_test_splits(cfg):
+    """Return final-test split names in evaluation order."""
+    splits = cfg.get('test_splits', ['internal_test', 'final_test'])
+    if isinstance(splits, str):
+        splits = [splits]
+    splits = [str(split) for split in splits]
+    if not splits:
+        raise ValueError('test_splits must contain at least one split name')
+    return splits
+
+
+def split_tag(tag, split):
+    """Build a file-safe test tag from checkpoint tag and split name."""
+    safe_split = str(split).replace('/', '_').replace(' ', '_')
+    return f'{tag}_{safe_split}'
+
+
 @hydra.main(config_path="../configs", config_name="config", version_base=None)
 def main(cfg: DictConfig):
     # Work directory
@@ -234,7 +251,7 @@ def main(cfg: DictConfig):
             num_samples += bs
 
             # Log
-            if (i+1) % log_interval == 0:
+            if (i+1) % log_interval == 0 or (i+1 == len(train_loader)):
                 avg_loss = log_vars_sum.get('loss', 0) / num_samples
                 avg_top1 = log_vars.get('top1_acc', 0)
                 pbar.set_postfix(loss=f'{avg_loss:.4f}', top1=f'{avg_top1:.4f}', lr=f'{lr:.6f}')
@@ -290,44 +307,49 @@ def main(cfg: DictConfig):
     if cfg.test_last or cfg.test_best:
         eval_cfg = cfg.get('evaluation', {})
         test_cfg = data_cfg.get('test', data_cfg['val'])
-        test_dataset = PoseDataset(
-            ann_file=test_cfg['ann_file'],
-            pipeline=test_cfg['pipeline'],
-            split=test_cfg.get('split'),
-            data_prefix=data_cfg.get('data_prefix', ''),
-            test_mode=True
-        )
-        test_loader = build_dataloader(
-            test_dataset,
-            batch_size=data_cfg.get('test_dataloader', {}).get('video_per_gpu', 1),
-            num_workers=data_cfg.get('workers_per_gpu', 4),
-            shuffle=False
-        )
+        final_test_splits = get_final_test_splits(cfg)
 
         to_test = []
         if cfg.test_last:
             last_ckpt = osp.join(work_dir, 'latest.pth')
             if osp.exists(last_ckpt):
-                to_test.append((last_ckpt, 'last', 'last_pred.pkl'))
+                to_test.append((last_ckpt, 'last'))
         if cfg.test_best:
             best_ckpts = [f for f in os.listdir(work_dir) if 'best' in f and f.endswith('.pth')]
             if best_ckpts:
                 best_ckpt = max(best_ckpts, key=lambda x: int(x.split('epoch_')[-1].replace('.pth', '')) if 'epoch_' in x else 0)
-                to_test.append((osp.join(work_dir, best_ckpt), 'best', 'best_pred.pkl'))
+                to_test.append((osp.join(work_dir, best_ckpt), 'best'))
 
         label_map_file = data_cfg.get('label_map')
 
-        for ckpt_path, tag, dump_name in to_test:
+        for ckpt_path, tag in to_test:
             model.load_state_dict(torch.load(ckpt_path, weights_only=False)['state_dict'])
-            eval_results, scores, cm_path = run_test(
-                model, test_loader, test_dataset, eval_cfg, work_dir, logger,
-                tag=tag, label_map_file=label_map_file)
-            dump_file(scores, osp.join(work_dir, dump_name))
-            if wandb_cfg.get('enabled', False):
-                wandb.log({
-                    **{f'test/{tag}/{k}': v for k, v in eval_results.items()},
-                    f'test/{tag}/confusion_matrix': wandb.Image(cm_path),
-                })
+            for split in final_test_splits:
+                test_dataset = PoseDataset(
+                    ann_file=test_cfg['ann_file'],
+                    pipeline=test_cfg['pipeline'],
+                    split=split,
+                    data_prefix=data_cfg.get('data_prefix', ''),
+                    test_mode=True
+                )
+                test_loader = build_dataloader(
+                    test_dataset,
+                    batch_size=data_cfg.get('test_dataloader', {}).get('video_per_gpu', 1),
+                    num_workers=data_cfg.get('workers_per_gpu', 4),
+                    shuffle=False
+                )
+
+                test_tag = split_tag(tag, split)
+                logger.info(f'Final test: checkpoint={tag}, split={split}, samples={len(test_dataset)}')
+                eval_results, scores, cm_path = run_test(
+                    model, test_loader, test_dataset, eval_cfg, work_dir, logger,
+                    tag=test_tag, label_map_file=label_map_file)
+                dump_file(scores, osp.join(work_dir, f'{test_tag}_pred.pkl'))
+                if wandb_cfg.get('enabled', False):
+                    wandb.log({
+                        **{f'test/{split}/{tag}/{k}': v for k, v in eval_results.items()},
+                        f'test/{split}/{tag}/confusion_matrix': wandb.Image(cm_path),
+                    })
 
     if wandb_cfg.get('enabled', False):
         wandb.finish()
@@ -335,4 +357,3 @@ def main(cfg: DictConfig):
 
 if __name__ == '__main__':
     main()
-
