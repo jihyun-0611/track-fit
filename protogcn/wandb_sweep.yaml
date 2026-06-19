@@ -1,0 +1,25 @@
+program: protogcn/train.py
+project: track-fit-new-data
+name: random-joint-mask-sweep
+method: bayes
+
+metric:
+  name: best_top1_acc
+  goal: maximize
+
+command:
+  - ${env}
+  - ${interpreter}
+  - -m
+  - protogcn.train
+  - seed=42
+
+
+parameters:
+  random_joint_mask.chance:
+    values: [0.1, 0.2, 0.3, 0.4]
+
+  random_joint_mask.p:
+    values: [0.25, 0.5, 0.75, 1.0]
+
+run_cap: 15

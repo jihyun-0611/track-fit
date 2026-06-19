@@ -1,6 +1,10 @@
 # @package _global_
-name: random_joint_mask
+name: random_joint_mask/${now:%m-%d-%H}/${now:%M-%S}-${oc.env:WANDB_RUN_ID,manual}
 
+random_joint_mask:
+  chance: 0.25
+  p: 0.5
+  
 data:
   train:
     pipeline:
@@ -8,8 +12,8 @@ data:
         clip_len: 100
       - type: PoseDecode
       - type: RandomJointMask
-        chance: 0.25
-        p: 0.48
+        chance: ${random_joint_mask.chance}
+        p: ${random_joint_mask.p}
       - type: GenSkeFeat
         dataset: coco_new
         feats: [j]

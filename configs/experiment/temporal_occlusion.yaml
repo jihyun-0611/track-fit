@@ -1,5 +1,11 @@
 # @package _global_
-name: temporal_occlusion
+name: temporal_occlusion/${now:%m-%d-%H}/${now:%M-%S}-${oc.env:WANDB_RUN_ID,manual}
+
+temporal_occlusion:
+    min_frames: 20
+    max_frames: 50
+    num_segments: 1
+    p: 0.5
 
 data:
   train:
@@ -8,10 +14,10 @@ data:
         clip_len: 100
       - type: PoseDecode
       - type: TemporalOcclusion
-        min_frames: 20
-        max_frames: 50
-        num_segments: 1
-        p: 0.5
+        min_frames: ${temporal_occlusion.min_frames}
+        max_frames: ${temporal_occlusion.max_frames}
+        num_segments: ${temporal_occlusion.num_segments}
+        p: ${temporal_occlusion.p}
       - type: GenSkeFeat
         dataset: coco_new
         feats: [j]
