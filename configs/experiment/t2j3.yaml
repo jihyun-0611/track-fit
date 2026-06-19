@@ -1,0 +1,35 @@
+name: t2j3
+
+temporal_occlusion:
+  min_frames: 20
+  max_frames: 50
+  num_segments: 1
+  p: 0.5
+random_joint_mask:
+  chance: 0.1
+  p: 1.0
+  
+data:
+  train:
+    pipeline:
+      - type: UniformSampleFrames
+        clip_len: 100
+      - type: PoseDecode
+      - type: TemporalOcclusion
+        min_frames: ${temporal_occlusion.min_frames}
+        max_frames: ${temporal_occlusion.max_frames}
+        num_segments: ${temporal_occlusion.num_segments}
+        p: ${temporal_occlusion.p}
+      - type: RandomJointMask
+        chance: ${random_joint_mask.chance}
+        p: ${random_joint_mask.p}
+      - type: GenSkeFeat
+        dataset: coco_new
+        feats: [j]
+      - type: FormatGCNInput
+        num_person: 1
+      - type: Collect
+        keys: [keypoint, label]
+        meta_keys: []
+      - type: ToTensor
+        keys: [keypoint]
