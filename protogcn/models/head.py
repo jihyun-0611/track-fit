@@ -12,7 +12,11 @@ class Head(nn.Module):
                  weight=0.3,
                  dropout=0.0,
                  label_smoothing=0.0,
-                 init_std=0.01):
+                 init_std=0.01,
+                 csc_prior_path=None,
+                 csc_prior_alpha=1.0,
+                 csc_prior_warmup_epochs=5,
+                 csc_prior_mode='off'):
         super().__init__()
 
         self.num_classes = num_classes
@@ -37,7 +41,12 @@ class Head(nn.Module):
         else:
             raise ValueError(f"Unknown joint_cfg: {joint_cfg}")
 
-        self.csc_loss = ClassSpecificContrastiveLoss(num_classes, n_channel)
+        self.csc_loss = ClassSpecificContrastiveLoss(
+            num_classes, n_channel,
+            prior_path=csc_prior_path,
+            prior_alpha=csc_prior_alpha,
+            prior_warmup_epochs=csc_prior_warmup_epochs,
+            prior_mode=csc_prior_mode)
         self.init_weights()
 
 
