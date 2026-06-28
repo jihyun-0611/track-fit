@@ -1,5 +1,5 @@
 # @package _global_
-name: bone_flip_only
+name: bone_flip
 
 data:
   train:

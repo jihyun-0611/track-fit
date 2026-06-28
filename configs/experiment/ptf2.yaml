@@ -1,14 +1,19 @@
 # @package _global_
-name: t2j3
+name: ptf2
 
 temporal_occlusion:
   min_frames: 20
-  max_frames: 50
+  max_frames: 40
   num_segments: 1
-  p: 0.5
+  p: 0.4
 random_joint_mask:
-  chance: 0.1
-  p: 1.0
+  chance: [0.03, 0.03, 0.03, 0.03, 0.03,
+           0.0,  0.0,  0.03, 0.03, 0.03,
+           0.03, 0.0,  0.0,  0.03, 0.03,
+           0.03, 0.03, 0.0,  0.0,  0.0]
+  p: 0.7
+flip:
+  flip_ratio: 0.5
   
 data:
   train:
@@ -16,6 +21,10 @@ data:
       - type: UniformSampleFrames
         clip_len: 100
       - type: PoseDecode
+      - type: Flip
+        flip_ratio: ${flip.flip_ratio}
+        left_kp:  [1, 3, 5, 7, 9, 11, 13, 15]
+        right_kp: [2, 4, 6, 8, 10, 12, 14, 16]
       - type: TemporalOcclusion
         min_frames: ${temporal_occlusion.min_frames}
         max_frames: ${temporal_occlusion.max_frames}

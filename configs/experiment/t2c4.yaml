@@ -1,14 +1,14 @@
 # @package _global_
-name: t2j3
+name: t2c4
 
 temporal_occlusion:
   min_frames: 20
-  max_frames: 50
+  max_frames: 40
   num_segments: 1
-  p: 0.5
+  p: 0.4
 random_joint_mask:
-  chance: 0.1
-  p: 1.0
+  chance: 0.05
+  p: 0.3
   
 data:
   train:
