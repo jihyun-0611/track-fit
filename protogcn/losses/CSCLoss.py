@@ -16,7 +16,9 @@ class ClassSpecificContrastiveLoss(nn.Module):
                  prior_path=None,
                  prior_alpha=1.0,
                  prior_warmup_epochs=5,
-                 prior_mode='off'): # 'bayes' | 'margin' | 'off'
+                 prior_mode='off',  # 'bayes' | 'margin' | 'hard_margin' | 'off'
+                 prior_hard_topk=3,
+                 prior_hard_norm='row_max'):
         super(ClassSpecificContrastiveLoss, self).__init__()
         self.n_channel = n_channel
         self.h_channel = h_channel
@@ -30,19 +32,50 @@ class ClassSpecificContrastiveLoss(nn.Module):
 
         if prior_path is not None and prior_mode != 'off':
             blob = torch.load(prior_path, map_location='cpu', weights_only=False)
-            P = blob['prior']
+            P = blob['prior'].float()
             assert P.shape == (n_class, n_class), f"prior shape {P.shape} != ({n_class}, {n_class})"
+
             self.register_buffer('log_prior', torch.log(P.clamp_min(1e-8)))
+
             if prior_mode == 'margin':
                 diag = self.log_prior.diag().unsqueeze(1)
                 self.register_buffer('log_prior_norm', self.log_prior - diag)
+            
+            if prior_mode == 'hard_margin':
+                W = P.clone()
+                W.fill_diagonal_(0.0)
+
+                if prior_hard_topk is not None and prior_hard_topk > 0:
+                    k = min(int(prior_hard_topk), n_class - 1)
+                    vals, idx = torch.topk(W, k=k, dim=1)
+                    W_topk = torch.zeros_like(W)
+                    W_topk.scatter_(1, idx, vals)
+                    W = W_topk
+                
+                if prior_hard_norm == 'row_max':
+                    denom = W.max(dim=1, keepdim=True).values.clamp_min(1e-8)
+                    W = W / denom
+                
+                elif prior_hard_norm == 'row_sum':
+                    denom = W.sum(dim=1, keepdim=True).clamp_min(1e-8)
+                    W = W / denom
+                elif prior_hard_norm in ('none', None):
+                    pass
+                else:
+                    raise ValueError(f'Unknown prior_hard_norm: {prior_hard_norm}')
+                
+                W.fill_diagonal_(0.0)
+                self.register_buffer('hard_margin_weight', W)
         else:
             self.register_buffer('log_prior', torch.zeros(n_class, n_class))
+            self.register_buffer('hard_margin_weight', torch.zeros(n_class, n_class))
+
         self.prior_alpha = prior_alpha
         self.prior_warmup_epochs = prior_warmup_epochs
         self.prior_mode = prior_mode
         self.current_epoch = 0
-
+        self.prior_hard_topk = prior_hard_topk
+        self.prior_hard_norm = prior_hard_norm
 
     def onehot(self, label):
         """one-hot encoding"""
@@ -147,5 +180,10 @@ class ClassSpecificContrastiveLoss(nn.Module):
             elif self.prior_mode == 'margin':
                 bias = self.log_prior_norm[lbl] # (batch, n_class), diag=0
                 score_cl = score_cl - alpha_eff *bias # subtract: penalty on confused j
+            elif self.prior_mode == 'hard_margin':
+                margin = self.hard_margin_weight[lbl]
+                score_cl = score_cl + alpha_eff * margin
+            else:
+                raise ValueError(f'Unknown prior_mode: {self.prior_mode}')
 
         return self.loss(score_cl, lbl).mean()

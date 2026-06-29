@@ -16,7 +16,9 @@ class Head(nn.Module):
                  csc_prior_path=None,
                  csc_prior_alpha=1.0,
                  csc_prior_warmup_epochs=5,
-                 csc_prior_mode='off'):
+                 csc_prior_mode='off',
+                 csc_prior_hard_topk=3,
+                 csc_prior_hard_norm='row_max',):
         super().__init__()
 
         self.num_classes = num_classes
@@ -46,7 +48,10 @@ class Head(nn.Module):
             prior_path=csc_prior_path,
             prior_alpha=csc_prior_alpha,
             prior_warmup_epochs=csc_prior_warmup_epochs,
-            prior_mode=csc_prior_mode)
+            prior_mode=csc_prior_mode,
+            prior_hard_topk=csc_prior_hard_topk,
+            prior_hard_norm=csc_prior_hard_norm,
+        )
         self.init_weights()
 
 
