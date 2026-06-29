@@ -12,7 +12,11 @@ class ClassSpecificContrastiveLoss(nn.Module):
                  h_channel=256,
                  tmp=0.125, # τ : temperature scaling
                  momentum=0.9,
-                 pred_threshold=0.0):
+                 pred_threshold=0.0, 
+                 prior_path=None,
+                 prior_alpha=1.0,
+                 prior_warmup_epochs=5,
+                 prior_mode='off'): # 'bayes' | 'margin' | 'off'
         super(ClassSpecificContrastiveLoss, self).__init__()
         self.n_channel = n_channel
         self.h_channel = h_channel
@@ -23,6 +27,22 @@ class ClassSpecificContrastiveLoss(nn.Module):
         self.register_buffer('avg_f', torch.randn(self.h_channel, self.n_class))
         self.cl_fc = nn.Linear(self.n_channel, self.h_channel)
         self.loss = nn.CrossEntropyLoss(reduction='none')
+
+        if prior_path is not None and prior_mode != 'off':
+            blob = torch.load(prior_path, map_location='cpu', weights_only=False)
+            P = blob['prior']
+            assert P.shape == (n_class, n_class), f"prior shape {P.shape} != ({n_class}, {n_class})"
+            self.register_buffer('log_prior', torch.log(P.clamp_min(1e-8)))
+            if prior_mode == 'margin':
+                diag = self.log_prior.diag().unsqueeze(1)
+                self.register_buffer('log_prior_norm', self.log_prior - diag)
+        else:
+            self.register_buffer('log_prior', torch.zeros(n_class, n_class))
+        self.prior_alpha = prior_alpha
+        self.prior_warmup_epochs = prior_warmup_epochs
+        self.prior_mode = prior_mode
+        self.current_epoch = 0
+
 
     def onehot(self, label):
         """one-hot encoding"""
@@ -116,5 +136,16 @@ class ClassSpecificContrastiveLoss(nn.Module):
 
         # batch, num_class
         score_cl = score_cl.permute(1, 0).contiguous()
+
+        if self.prior_mode != 'off':
+            # linear warmup over [0, warmup_epochs)
+            ramp = min(1.0, self.current_epoch / max(1, self.prior_warmup_epochs))
+            alpha_eff = self.prior_alpha *ramp
+            if self.prior_mode == 'bayes':
+                bias = self.log_prior[lbl] # batch, n_class
+                score_cl = score_cl + alpha_eff *bias
+            elif self.prior_mode == 'margin':
+                bias = self.log_prior_norm[lbl] # (batch, n_class), diag=0
+                score_cl = score_cl - alpha_eff *bias # subtract: penalty on confused j
 
         return self.loss(score_cl, lbl).mean()

@@ -221,6 +221,8 @@ def main(cfg: DictConfig):
 
     for epoch in range(start_epoch, total_epochs):
         train_dataset.pipeline.set_epoch(epoch)
+        if hasattr(model, 'cls_head') and hasattr(model.cls_head, 'csc_loss'):
+            model.cls_head.csc_loss.current_epoch=epoch
         model.train()
         log_vars_sum, num_samples = {}, 0
         pbar = tqdm(train_loader, desc=f'Epoch {epoch+1}/{total_epochs}')
