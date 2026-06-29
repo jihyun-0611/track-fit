@@ -1,0 +1,15 @@
+# @package _global_
+defaults:
+  - model: protogcn
+  - data: j
+  - _self_
+
+ckpt_path: work_dirs/T2/best_top1_acc_epoch_110.pth
+prior_split: val      
+out_path: null        # null이면 ckpt_path 디렉토리에 confusion_prior_<split>.pt
+# smooth_eps: 0.045   # 생략하면 스크립트에서 1/n_class로 자동 계산
+
+model:
+  cls_head:
+    csc_prior_mode: off
+    csc_prior_path: null

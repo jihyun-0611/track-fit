@@ -15,7 +15,7 @@ from ..models import Recognizer, ProtoGCN, Head
 from ..utils import get_logger, remap_model_keys
 
 
-@hydra.main(config_path="../../configs", config_name="config", version_base=None)
+@hydra.main(config_path="../../configs", config_name="build_prior", version_base=None)
 def main(cfg: DictConfig):
     ckpt_path = cfg.get('ckpt_path', None)
     assert ckpt_path is not None, "ckpt_path required: python -m protogcn.tools.build_confusion_prior ckpt_path=..."
