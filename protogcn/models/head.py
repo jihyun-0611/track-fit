@@ -13,12 +13,11 @@ class Head(nn.Module):
                  dropout=0.0,
                  label_smoothing=0.0,
                  init_std=0.01,
-                 csc_prior_path=None,
-                 csc_prior_alpha=1.0,
-                 csc_prior_warmup_epochs=5,
-                 csc_prior_mode='off',
-                 csc_prior_hard_topk=3,
-                 csc_prior_hard_norm='row_max',):
+                 prior_path=None, prior_mode='off',
+                 prior_hard_topk=3, prior_hard_norm='row_max', 
+                 csc_prior_alpha=0.0, csc_prior_warmup_epochs=5,
+                 ce_prior_alpha=0.0, ce_prior_warmup_epochs=5,     
+                ):
         super().__init__()
 
         self.num_classes = num_classes
@@ -43,15 +42,17 @@ class Head(nn.Module):
         else:
             raise ValueError(f"Unknown joint_cfg: {joint_cfg}")
 
-        self.csc_loss = ClassSpecificContrastiveLoss(
-            num_classes, n_channel,
-            prior_path=csc_prior_path,
-            prior_alpha=csc_prior_alpha,
-            prior_warmup_epochs=csc_prior_warmup_epochs,
-            prior_mode=csc_prior_mode,
-            prior_hard_topk=csc_prior_hard_topk,
-            prior_hard_norm=csc_prior_hard_norm,
-        )
+        self._build_prior_buffer(prior_path, prior_mode, prior_hard_topk, prior_hard_norm)
+        self.csc_loss = ClassSpecificContrastiveLoss(num_classes, n_channel)
+
+        self.csc_prior_alpha = csc_prior_alpha
+        self.csc_prior_warmup_epochs = csc_prior_warmup_epochs
+
+        self.ce_prior_alpha = ce_prior_alpha
+        self.ce_prior_warmup_epochs = ce_prior_warmup_epochs
+
+        self.register_buffer('_current_epoch', torch.tensor(0))
+
         self.init_weights()
 
 
@@ -59,6 +60,64 @@ class Head(nn.Module):
         nn.init.normal_(self.fc_cls.weight, std=self.init_std)
         if self.fc_cls.bias is not None:
             nn.init.constant_(self.fc_cls.bias, 0)
+
+
+    def _build_prior_buffer(self, path, mode, topk, norm):
+        C = self.num_classes
+        if path is None or mode == 'off':
+            self.register_buffer('W', torch.zeros(C, C))
+            self.prior_mode = 'off'
+            return
+        
+        blob = torch.load(path, map_location='cpu', weights_only=False)
+        P = blob['prior'].float()
+        
+        assert P.shape == (C, C)
+        
+        if mode == 'hard_margin':
+            if 'confusion_raw' not in blob:
+                raise KeyError(
+                    "hard_margin mode requires 'confusion_raw' in prior file. "
+                    "Regenerate it with protogcn.tools.build_confusion_prior."
+                )
+            C_raw = blob['confusion_raw'].float()
+            assert C_raw.shape == (C, C)
+            W = self._make_hard_margin_W(C_raw, topk, norm)
+        elif mode == 'bayes':
+            W = torch.log(P.clamp_min(1e-8))   # 기존 log_prior와 동등
+        elif mode == 'margin':
+            log_P = torch.log(P.clamp_min(1e-8))
+            W = log_P.diag().unsqueeze(1) - log_P
+        else:
+            raise ValueError(f'Unknown prior_mode: {mode}')
+        self.register_buffer('W', W)
+        self.prior_mode = mode
+
+
+    def _make_hard_margin_W(self, P, topk, norm):
+        W = P.clone()
+        W.fill_diagonal_(0.0)
+
+        if topk is not None and topk > 0:
+            k = min(int(topk), self.num_classes - 1)
+            vals, idx = torch.topk(W, k=k, dim=1)
+            W_topk = torch.zeros_like(W)
+            W_topk.scatter_(1, idx, vals)
+            W = W_topk
+
+        if norm == 'row_max':
+            denom = W.max(dim=1, keepdim=True).values.clamp_min(1e-8)
+            W = W / denom
+        elif norm == 'row_sum':
+            denom = W.sum(dim=1, keepdim=True).clamp_min(1e-8)
+            W = W / denom
+        elif norm in ('none', None):
+            pass
+        else:
+            raise ValueError(f'Unknown prior_hard_norm: {norm}')
+
+        W.fill_diagonal_(0.0)
+        return W
 
 
     def forward(self, x):
@@ -116,11 +175,20 @@ class Head(nn.Module):
             losses['top1_acc'] = torch.tensor(top_k_acc[0], device=cls_score.device)
             losses['top5_acc'] = torch.tensor(top_k_acc[1], device=cls_score.device)
         
-        # cross-entropy 
-        loss_ce = self.ce_loss(cls_score, label)
+        # cross-entropy with optional confusion-aware additive margin on negatives
+        if self.ce_prior_alpha > 0 and self.prior_mode != 'off':
+            ramp = min(1.0, self._current_epoch.item() / max(1, self.ce_prior_warmup_epochs))
+            cls_score_adj = cls_score + (self.ce_prior_alpha * ramp) * self.W[label]
+            loss_ce = self.ce_loss(cls_score_adj, label)
+        else:
+            loss_ce = self.ce_loss(cls_score, label)
 
         # class-specific contrastive loss
-        loss_csc = self.csc_loss(get_graph, label.detach(), cls_score.detach())
+        cscl_W = None
+        if self.csc_prior_alpha > 0 and self.prior_mode != 'off':
+            ramp = min(1.0, self._current_epoch.item() / max(1, self.csc_prior_warmup_epochs))
+            cscl_W = (self.csc_prior_alpha * ramp) * self.W
+        loss_csc = self.csc_loss(get_graph, label.detach(), cls_score.detach(), W=cscl_W)
 
         # total loss
         total_loss = loss_ce + self.weight * loss_csc.mean()

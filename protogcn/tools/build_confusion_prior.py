@@ -56,8 +56,8 @@ def main(cfg: DictConfig):
     model_cfg = cfg['model']
     backbone_cfg = {k: v for k, v in model_cfg['backbone'].items() if k != 'type'}
     head_cfg = {k: v for k, v in model_cfg['cls_head'].items() if k != 'type'}
-    head_cfg['csc_prior_mode'] = 'off'
-    head_cfg['csc_prior_path'] = None
+    head_cfg['prior_mode'] = 'off'
+    head_cfg['prior_path'] = None
 
     model = Recognizer(
         backbone=ProtoGCN(**backbone_cfg),
@@ -75,7 +75,6 @@ def main(cfg: DictConfig):
     if unexpected:
         logger.info(f'Unexpected keys ({len(unexpected)}): {unexpected[:5]}')
     if missing:
-        # log_prior is expected to be missing — baseline has no prior buffer
         logger.info(f'Missing keys ({len(missing)}): {missing[:5]}')
 
 
