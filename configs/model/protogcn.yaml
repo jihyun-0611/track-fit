@@ -22,8 +22,13 @@ cls_head:
   weight: 0.2
   dropout: 0.5
   label_smoothing: 0.1
-  csc_prior_mode: bayes               # off | bayes | margin
-  csc_prior_path: ${oc.env:WORK_DIR,}/protect_torso_c05/confusion_prior_val.pt
-  csc_prior_alpha: 1.0
-  csc_prior_warmup_epochs: 5
+  
+  prior_path: ${oc.env:WORK_DIR,}/protect_torso_c05/confusion_prior_val.pt
+  prior_mode: hard_margin           
+  prior_hard_topk: 3
+  prior_hard_norm: row_max
+  csc_prior_alpha: 0.0               
+  ce_prior_alpha: 1.0                 
+  ce_prior_warmup_epochs: 20
+
 
