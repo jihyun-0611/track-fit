@@ -394,7 +394,56 @@ class ToMotion:
         
         results[self.target] = motion
         return results
+
+
+class JointToAngle:
+    """coco_new(20joint). output channel : [local angle, torso-relative angle, confidence]"""
+    # (joint, ref1, ref2): The angle between two vectors in the ref1 and ref2 directions, with the joint as the vertex
+    TRIPETS=(
+        (7, 5, 9), (8, 6, 10),        # elbow: shoulder-elbow-wrist
+        (13, 11, 15), (14, 12, 16),   # knee: hip-knee-ankle
+        (5, 7, 11), (6, 8, 12),       # shoulder: elbow-shoulder-hip
+        (11, 5, 13), (12, 6, 14),     # hip: shoulder-hip-knee
+        (9, 7, 7), (10, 8, 8),        # wrist: forearm 방향 (동일 ref → ch0=0, ch1만 사용)
+        (15, 13, 13), (16, 14, 14),   # ankle
+        (0, 17, 18),                  # nose: 머리-torso
+    )
+
+    def __init__(self, dataset='coco_new', target='a'):
+        assert dataset == 'coco_new'
+        self.target = target
     
+    @staticmethod
+    def _angle(v1, v2):
+        n = np.linalg.norm(v1, axis=-1) * np.linalg.norm(v2, axis=-1) + EPS
+        cos = (v1 * v2).sum(-1) / n
+        return np.arccos(np.clip(cos, -1.0, 1.0))
+    
+    def __call__(self, results):
+        kp = results['keypoint']            # (M, T, V, C)
+        M, T, V, C = kp.shape
+        xy = kp[..., :2]
+        score = results.get('keypoint_score', None)
+        if score is None and C == 3:
+            score = kp[..., 2]
+
+        angle = np.zeros((M, T, V, 3), dtype=np.float32)
+        torso = xy[..., 18, :] - xy[..., 17, :]          # mid_hip -> mid_shoulder 축
+
+        for j, r1, r2 in self.TRIPLETS:
+            angle[..., j, 0] = self._angle(xy[..., r1, :] - xy[..., j, :],
+                                           xy[..., r2, :] - xy[..., j, :])
+            if score is not None:
+                angle[..., j, 2] = np.minimum(np.minimum(score[..., j], score[..., r1]),
+                                              score[..., r2])
+        
+        # all joints: Relative angle of the torso axis relative to the mid_hip reference direction (posture/tilt information)
+        for j in range(V):
+            angle[..., j, 1] = self._angle(xy[..., j, :] - xy[..., 17, :], torso)
+
+        results[self.target] = angle
+        return results
+
 
 class MergeSkeFeat:
     def __init__(self, feat_list=['keypoint'], target='keypoint', axis=-1):
@@ -430,6 +479,8 @@ class GenSkeFeat:
             ops.append(ToMotion(dataset=dataset, source='b', target='bm'))
         if 'km' in feats:
             ops.append(ToMotion(dataset=dataset, source='k', target='km'))
+        if 'a' in feats:
+            ops.append(JointToAngle(dataset=dataset, target='a'))
         ops.append(MergeSkeFeat(feat_list=feats, axis=axis))
         self.ops = Compose(ops)
     
