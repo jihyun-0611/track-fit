@@ -11,6 +11,9 @@ mmdetection/
 work_dirs/
 *.ipynb
 !configs/data/
+results/
+scores/
+
 
 # Hydra outputs
 outputs/

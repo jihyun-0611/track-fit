@@ -399,7 +399,7 @@ class ToMotion:
 class JointToAngle:
     """coco_new(20joint). output channel : [local angle, torso-relative angle, confidence]"""
     # (joint, ref1, ref2): The angle between two vectors in the ref1 and ref2 directions, with the joint as the vertex
-    TRIPETS=(
+    TRIPLETS =(
         (7, 5, 9), (8, 6, 10),        # elbow: shoulder-elbow-wrist
         (13, 11, 15), (14, 12, 16),   # knee: hip-knee-ankle
         (5, 7, 11), (6, 8, 12),       # shoulder: elbow-shoulder-hip
@@ -470,6 +470,8 @@ class GenSkeFeat:
         ops = []
         if 'b' in feats or 'bm' in feats:
             ops.append(JointToBone(dataset=dataset, target='b'))
+        if 'a' in feats:
+            ops.append(JointToAngle(dataset=dataset, target='a'))
         if 'k' in feats or 'km' in feats:
             ops.append(JointToBone(dataset=dataset, target='k'))
         ops.append(Rename({'keypoint': 'j'}))
@@ -479,8 +481,7 @@ class GenSkeFeat:
             ops.append(ToMotion(dataset=dataset, source='b', target='bm'))
         if 'km' in feats:
             ops.append(ToMotion(dataset=dataset, source='k', target='km'))
-        if 'a' in feats:
-            ops.append(JointToAngle(dataset=dataset, target='a'))
+        
         ops.append(MergeSkeFeat(feat_list=feats, axis=axis))
         self.ops = Compose(ops)
     
