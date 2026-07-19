@@ -443,6 +443,81 @@ class JointToAngle:
 
         results[self.target] = angle
         return results
+    
+
+class JointToAngleV2:
+    """
+    a2: ch0 = per-joint local angle (same TRIPLETS as V1),
+        ch1 = cosine of the absolute torso angle (broadcast identically to all joints, replacing V1's relative angle),
+        ch2 = confidence (same as V1).
+    """
+    TRIPLETS = JointToAngle.TRIPLETS
+
+    def __init__(self, dataset='coco_new', target='a2'):
+        assert dataset == 'coco_new'
+        self.target = target
+    
+    @staticmethod
+    def _angle(v1, v2):
+        n = np.linalg.norm(v1, axis=-1) * np.linalg.norm(v2, axis=-1) + EPS
+        cos = (v1 * v2).sum(-1) / n
+        return np.arccos(np.clip(cos, -1.0, 1.0))
+    
+    def __call__(self, results):
+        kp = results['keypoint']            # (M, T, V, C)
+        M, T, V, C = kp.shape
+        xy = kp[..., :2]
+        score = kp[..., 2] if C==3 else None
+
+        angle = np.zeros((M, T, V, 3), dtype=np.float32)
+        
+        for j, r1, r2 in self.TRIPLETS:
+            angle[..., j, 0] = self._angle(xy[..., r1, :] - xy[..., j, :],
+                                           xy[..., r2, :] - xy[..., j, :])
+            if score is not None:
+                angle[..., j, 2] = np.minimum(np.minimum(score[..., j], score[..., r1]),
+                                              score[..., r2])
+        
+        torso = xy[..., 18, :] - xy[..., 17, :]
+        norm = np.linalg.norm(torso, axis=-1, keepdims=True) + EPS
+        u = torso / norm
+        angle[..., 1] = (-u[..., 1])[..., None]      # (M, T) -> (M, T, V)
+
+        results[self.target] = angle
+        return results
+
+
+class GlobalTorsoAngle:
+    """The absolute angle between the torso axis 
+    (mid_hip(17) → mid_shoulder(18)) and the vertical image axis.  
+
+    Output: (M, T, V, 3) = [cos, sin, conf], with one value per frame broadcast to all joints.  
+    Since the image coordinate system uses y-down, the vertical (upward) direction is (0, -1)."""
+
+    def __init__(self, dataset='coco_new', target='ga'):
+        assert dataset == 'coco_new'
+        self.target = target
+
+    def __call__(self, results):
+        kp = results['keypoint']                     # (M, T, V, C), C=2 or 3
+        M, T, V, C = kp.shape
+        xy = kp[..., :2]
+
+        torso = xy[..., 18, :] - xy[..., 17, :]      # (M, T, 2)
+        norm = np.linalg.norm(torso, axis=-1, keepdims=True) + EPS
+        u = torso / norm                             # unit vector
+        cos = -u[..., 1]                             # dot((ux,uy), (0,-1))
+        sin = u[..., 0]                              # cross((0,-1), u)
+
+        if C == 3:
+            conf = np.minimum(kp[..., 17, 2], kp[..., 18, 2])   # (M, T)
+        else:
+            conf = np.ones((M, T), dtype=np.float32)
+
+        out = np.stack([cos, sin, conf], axis=-1)    # (M, T, 3)
+        out = out[:, :, None, :]                     # (M, T, 1, 3)
+        results[self.target] = np.repeat(out, V, axis=2).astype(np.float32)
+        return results
 
 
 class MergeSkeFeat:
@@ -472,6 +547,10 @@ class GenSkeFeat:
             ops.append(JointToBone(dataset=dataset, target='b'))
         if 'a' in feats:
             ops.append(JointToAngle(dataset=dataset, target='a'))
+        if 'ga' in feats:                                    
+            ops.append(GlobalTorsoAngle(dataset=dataset, target='ga'))
+        if 'a2' in feats:                                    
+            ops.append(JointToAngleV2(dataset=dataset, target='a2'))
         if 'k' in feats or 'km' in feats:
             ops.append(JointToBone(dataset=dataset, target='k'))
         ops.append(Rename({'keypoint': 'j'}))
