@@ -180,17 +180,19 @@ class RandomJointMask:
             return results
         
         keypoint = results['keypoint'] # (M, T, V, 2)
-        keypoint_score = results['keypoint_score'] # (M, T, V)
+        # keypoint_score = results['keypoint_score'] # (M, T, V)
         num_joints = keypoint.shape[2]
 
         for i in range(num_joints):
             chance = self.chance if isinstance(self.chance, float) else self.chance[i]
             if np.random.rand() < chance:
                 keypoint[:, :, i, :] = 0.0
-                keypoint_score[:, :, i] = 0.0
+                # keypoint_score[:, :, i] = 0.0
+                if 'keypoint_score' in results:
+                    results['keypoint_score'][:, :, i] = 0.0
         
         results['keypoint'] = keypoint
-        results['keypoint_score'] = keypoint_score
+        # results['keypoint_score'] = keypoint_score
         return results
     
     def __repr__(self):
@@ -323,7 +325,7 @@ class TemporalOcclusion:
             return results
         
         keypoint = results['keypoint'] # (M, T, V, 2)
-        keypoint_score = results['keypoint_score'] # (M, T, V)
+        # keypoint_score = results['keypoint_score'] # (M, T, V)
         T = keypoint.shape[1]
 
         for _ in range(self.num_segments):
@@ -332,10 +334,12 @@ class TemporalOcclusion:
             end = start + length
 
             keypoint[:, start:end, :, :] = 0.0
-            keypoint_score[:, start:end, :] = 0.0
+            # keypoint_score[:, start:end, :] = 0.0
+            if 'keypoint_score' in results:
+                results['keypoint_score'][:, start:end] = 0.0
         
         results['keypoint'] = keypoint
-        results['keypoint_score'] = keypoint_score
+        # results['keypoint_score'] = keypoint_score
         return results
 
     def __repr__(self):
