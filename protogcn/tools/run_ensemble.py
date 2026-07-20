@@ -31,7 +31,7 @@ EXPECTED_SPLIT_LENGTHS = {
     "internal": 236,
     "final": 61,
 }
-KNOWN_MODELS = {"pt05", "b_T2", "jm_T2w", "a_basic"}
+KNOWN_MODELS = {"pt05", "b_T2", "jm_T2w", "a_basic", "a2_basic", "ga_basic"}
 WEIGHT_VALUES = (0.0, 0.25, 0.5, 0.75, 1.0)
 ADD_A_WEIGHTS = (0.2, 0.3)
 
