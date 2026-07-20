@@ -1,20 +1,20 @@
 defaults:
-  - model: protogcn22
+  - model: protogcn
   - data: j
   - _self_
-  - optional experiment: random_joint_mask
+  - optional experiment: null
   # random_joint_mask, flip_only, temporal_occlusion
 
 name: exercise
 work_dir: null
 
-seed: null
+seed: 458004763
 deterministic: false
 compile: false
 
 validate: true
 test_last: false
-test_best: false
+test_best: true
 test_splits: [internal_test, final_test]
 auto_resume: false
 resume_from: null
@@ -22,7 +22,7 @@ ckpt_dir: ${oc.env:WORK_DIR,}
 ckpt_file: finegym_j/best_top1_acc_epoch_141.pth
 load_from: ${ckpt_dir}/${ckpt_file}
 
-total_epochs: 100
+total_epochs: 120
 
 optimizer: 
   lr: 0.0005
