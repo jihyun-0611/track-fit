@@ -1,8 +1,8 @@
 defaults:
   - model: protogcn
-  - data: basic
+  - data: j
   - _self_
-  - optional experiment: freeze
+  - optional experiment: null
 
 name: exercise
 work_dir: null
@@ -20,7 +20,7 @@ ckpt_dir: ${oc.env:WORK_DIR,}
 ckpt_file: finegym_j/best_top1_acc_epoch_141.pth
 load_from: ${ckpt_dir}/${ckpt_file}
 
-total_epochs: 30
+total_epochs: 100
 
 optimizer: 
   lr: 0.012

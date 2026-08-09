@@ -18,11 +18,12 @@ model:
   cls_head:
     type: Head
     joint_cfg: coco_new
-    num_classes: 20
+    num_classes: 22
     in_channels: 384
     weight: 0.2
     dropout: 0.5
     label_smoothing: 0.1
+    prior_mode: off
   test_cfg:
     average_clips: prob
 data:
@@ -34,7 +35,7 @@ data:
       - type: PoseDecode
       - type: GenSkeFeat
         dataset: coco_new
-        feats: [b]
+        feats: [j]
       - type: FormatGCNInput
         num_person: 1
       - type: Collect

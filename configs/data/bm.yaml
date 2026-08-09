@@ -1,0 +1,61 @@
+data_dir: ${oc.env:DATA_DIR}
+dataset_file: dataset_diff.pkl
+label_map: ${data.data_dir}/dataset_diff_label_mapping.json
+
+video_per_gpu: 16
+workers_per_gpu: 4
+test_dataloader:
+  video_per_gpu: 4
+train:
+  ann_file: ${data.data_dir}/${data.dataset_file}
+  split: train
+  pipeline:
+    - type: UniformSampleFrames
+      clip_len: 100
+    - type: PoseDecode
+    - type: GenSkeFeat
+      dataset: coco_new
+      feats: [bm]
+    - type: FormatGCNInput
+      num_person: 1
+    - type: Collect
+      keys: [keypoint, label]
+      meta_keys: []
+    - type: ToTensor
+      keys: [keypoint]
+val:
+  ann_file: ${data.data_dir}/${data.dataset_file}
+  split: val
+  pipeline:
+    - type: UniformSampleFrames
+      clip_len: 100
+      num_clips: 1
+    - type: PoseDecode
+    - type: GenSkeFeat
+      dataset: coco_new
+      feats: [bm]
+    - type: FormatGCNInput
+      num_person: 1
+    - type: Collect
+      keys: [keypoint, label]
+      meta_keys: []
+    - type: ToTensor
+      keys: [keypoint]
+test:
+  ann_file: ${data.data_dir}/${data.dataset_file}
+  split: test
+  pipeline:
+    - type: UniformSampleFrames
+      clip_len: 100
+      num_clips: 10
+    - type: PoseDecode
+    - type: GenSkeFeat
+      dataset: coco_new
+      feats: [bm]
+    - type: FormatGCNInput
+      num_person: 1
+    - type: Collect
+      keys: [keypoint, label]
+      meta_keys: []
+    - type: ToTensor
+      keys: [keypoint]
