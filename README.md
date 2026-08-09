@@ -3,8 +3,6 @@
 Skeleton 기반 운동 동작 인식·유사도 평가 시스템.
 MediaPipe로 추출한 관절 좌표를 ProtoGCN(CVPR 2025) 재구현 모델로 학습하고, 저품질 실환경 keypoint에서의 일반화 문제를 데이터 설계–증강–멀티스트림 앙상블–원인 진단으로 개선했습니다.
 
-📄 [연구 보고서](#) · 📊 [실험 로그 (WandB)](#)
-
 ## Results
 
 노이즈가 추가된 저품질 데이터셋 검증(final_test, 61 clips) 기준 22클래스 인식 정확도:
@@ -15,7 +13,7 @@ MediaPipe로 추출한 관절 좌표를 ProtoGCN(CVPR 2025) 재구현 모델로 
 | + Temporal occlusion | 68.9% |
 | + Torso-protected joint masking | 72.1% |
 | + Bone stream | 75.4% |
-| **+ Calibrated 4-stream ensemble** | **78.7%** |
+| **+ Calibrated 3-stream ensemble** | **78.7%** |
 
 남은 오답은 원인을 keypoint 측정 수준까지 추적해, 촬영 각도·추적 실패 등 **모델 외적 요인**과 분류 경계 문제를 구분했습니다.
 
