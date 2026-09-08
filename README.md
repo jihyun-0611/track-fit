@@ -42,7 +42,7 @@ track-fit/
 │       └── linear_probe.py    
 ├── scripts/
 │   ├── extract_keypoint_mediapipe.py                   # extract keypoint                 
-│   └── split_dataset_difficulty_stratified.py          # split data
+│   └── split_dataset_difficulty_stratified.py          # split dataset
 ├── demo/                   
 └── external/ProtoGCN/   
 ```
@@ -52,7 +52,7 @@ track-fit/
 ```bash
 git clone https://github.com/jihyun-0611/track-fit.git
 cd track-fit
-git submodule update --init --recursive   # external/ProtoGCN (참고용)
+git submodule update --init --recursive   # external/ProtoGCN (원본 코드)
 
 conda create -n mediapipe python=3.8
 conda activate mediapipe
