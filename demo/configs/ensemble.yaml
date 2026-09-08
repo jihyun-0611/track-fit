@@ -1,0 +1,16 @@
+streams:
+  - name: pt05
+    config: demo/configs/streams/j.yaml
+    checkpoint: ${oc.env:WORK_DIR,}/protect_torso_c05/best_top1_acc_epoch_120.pth
+    weight: 0.5 
+    temperature: 0.8 
+  - name: b_T2
+    config: demo/configs/streams/b.yaml
+    checkpoint: ${oc.env:WORK_DIR,}/b_T2/best_top1_acc_epoch_100.pth
+    weight: 0.25 
+    temperature: 0.7 
+  - name: a_basic
+    config: demo/configs/streams/a.yaml
+    checkpoint: ${oc.env:WORK_DIR,}/a_basic/best_top1_acc_epoch_60.pth
+    weight: 0.25 
+    temperature: 0.9 

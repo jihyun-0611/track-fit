@@ -1,180 +1,94 @@
-# Track-Fit: 운동 동작 품질 평가 시스템
+# Track-Fit
 
-ProtoGCN 기반 실시간 운동 동작 인식 및 품질 평가 시스템
+Skeleton 기반 운동 동작 인식·유사도 평가 시스템.
 
-## 📋 프로젝트 개요
+- ProtoGCN(CVPR 2025) 재구현
+- MediaPipe로 관절 좌표 추출 후 COCO20 형식으로 변환 
+- 추출한 관절의 품질을 신뢰도 기반 점수로 정량화
+- 저품질 keypoint에서의 모델 일반화를 위해 Occlusion Augmentation 구현
+- hard-negative margin loss 구현 
+- 기존 Joint feature를 사용해 Angle feature 구현
 
-Track-Fit은 운동 영상에서 동작의 품질을 평가하기 위한 딥러닝 기반 시스템입니다. [ProtoGCN](https://openaccess.thecvf.com/content/CVPR2025/html/Liu_Revealing_Key_Details_to_See_Differences_A_Novel_Prototypical_Perspective_CVPR_2025_paper.html)(Prototype Graph Convolutional Network)을 활용하여 운동 동작의 프로토타입을 학습하고, 실시간으로 동작을 인식하며 품질을 평가합니다.
+
+## Results
+
+노이즈가 추가된 저품질 데이터셋 기준:
+
+| 단계 | Top-1 Acc |
+|---|---:|
+| Baseline (FineGym-pretrained fine-tuning) | 67.2% |
+| + Temporal occlusion | 68.9% |
+| + Torso-protected joint masking | 72.1% |
+| Bone + Temporal occlusion | 75.4% |
+| **3-stream ensemble** | **78.7%** |
 
 
-## 🏗️ 프로젝트 구조
+## Repository Structure
 
 ```
 track-fit/
-├── configs/
-├── demo/                      # Real-time demo app
-│   ├── app/                  # Web application
-│   ├── extractor/            # MediaPipe keypoint extraction server
-│   └── inferencer/           # ProtoGCN inference server
-├── external/
-│   └── ProtoGCN/             # ProtoGCN submodule
+├── configs/                                            # Hydra config
+│   ├── config.yaml
+│   ├── model/  data/       
+│   └── experiment/  
+├── protogcn/                                           # ProtoGCN 재구현
+│   ├── train.py  test.py
+│   ├── models/  losses/  utils/
+│   ├── datasets/pipelines/        
+│   └── tools/
+│       ├── run_ensemble.py                             # ensemble
+│       ├── cluster_eval.py                             # error analysis
+│       ├── extract_features.py 
+│       └── linear_probe.py    
 ├── scripts/
-│   ├── create_dataset.py                      # Dataset creation
-│   ├── extract_keypoint_mediapipe.py          # Keypoint extraction
-│   ├── visualize_keypoints_mediapipe.py       # Visualization
-│   ├── analyze_prototype_class_mapping.py     # Prototype-class mapping analysis
-│   └── test_quality_assessment.py             # Quality assessment test
-├── quality_assessment.py          # Quality assessment module
-├── prototype_class_mapping.pkl    # Prototype-class mapping data
-├── freeze_backbone_hook.py        # Custom training hook
-└── train_hydra.py                 # Hydra training script
+│   ├── extract_keypoint_mediapipe.py                   # extract keypoint                 
+│   └── split_dataset_difficulty_stratified.py          # split dataset
+├── demo/                   
+└── external/ProtoGCN/   
 ```
 
-## 🚀 설치 및 환경 설정
-
-### 1. 저장소 클론 및 서브모듈 초기화
+## Setup
 
 ```bash
 git clone https://github.com/jihyun-0611/track-fit.git
 cd track-fit
+git submodule update --init --recursive   # external/ProtoGCN (원본 코드)
 
-# ProtoGCN 서브모듈 초기화
-git submodule update --init --recursive
-
-# ProtoGCN 환경 설정
-cd external/ProtoGCN
-conda env create -f protogcn.yaml
-conda activate protogcn
-pip install -e .
-
-# Hydra 설치
-cd ../..
-pip install hydra-core omegaconf
-
-pip install python-dotenv
-```
-
-```bash
-# MediaPipe 환경 (키포인트 추출 및 웹 서버용)
 conda create -n mediapipe python=3.8
 conda activate mediapipe
-pip install -r demo/extractor/requirements.txt
+pip install torch mediapipe opencv-python hydra-core omegaconf python-dotenv wandb
 ```
 
-### 2. 환경 변수 설정
+사전학습 가중치: [FineGym joint checkpoint](https://github.com/firework8/ProtoGCN/blob/main/data/README.md)를 받아 `.env`의 `WORK_DIR` 하위 `finegym_j/`에 배치.
 
-`.env` 파일 생성:
+`.env` :
 ```bash
-BASE_DIR=/path/to/track-fit
 DATA_DIR=/path/to/track-fit/data
-CHECKPOINT_DIR=/path/to/track-fit/checkpoints
 WORK_DIR=/path/to/track-fit/work_dirs
-PRETRAINED=/path/to/track-fit/checkpoints/finegym_j/best.pth
-DATASET_PATH=/path/to/track-fit/data/exercise_dataset.pkl
 ```
 
-## 📊 데이터 준비
+## Usage
 
-https://www.kaggle.com/datasets/hasyimabdillah/workoutfitness-video
-
-### 1. 비디오 데이터 구조
-
-```
-data/
-├── sample_videos/
-│   ├── barbell biceps curl/
-│   ├── bench press/
-│   ├── lat pulldown/
-│   ├── push-up/
-│   └── tricep Pushdown/
-└── filter_meta.csv  # 비디오 메타데이터
-```
-
-### 2. 키포인트 추출
+**1. 데이터 준비** — [Kaggle Gym Workout/Exercises Video](https://www.kaggle.com/datasets/philosopher0808/gym-workoutexercises-video) (22 exercises, 1,608 clips)
 
 ```bash
-conda activate mediapipe
-
-# 기본 실행
-python scripts/extract_keypoint_mediapipe.py
-
-# 커스텀 data directory
-python scripts/extract_keypoint_mediapipe.py --data-dir /path/to/data
-
-# 신뢰도 임계값 조정
-python scripts/extract_keypoint_mediapipe.py --min-detection-confidence 0.7 --min-tracking-confidence 0.7
+python scripts/extract_keypoint_mediapipe.py              # MediaPipe → COCO20 keypoint
+python scripts/split_dataset_difficulty_stratified.py     # difficulty 기반 stratified split
 ```
 
-### 3. 데이터셋 생성
+**2. 학습** — preset 목록은 `configs/experiment/` 참고
 
 ```bash
-# 기본 실행 (.env의 DATA_DIR 사용 또는 자동 탐색)
-python scripts/create_dataset.py
-
-# 커스텀 data directory
-python scripts/create_dataset.py --data-dir /path/to/data
-
-# Train/validation split 비율 변경
-python scripts/create_dataset.py --train-ratio 0.9 --random-seed 123
+python protogcn/train.py experiment=<preset>
 ```
 
-## 🏋️ 모델 학습
+**3. 평가·앙상블**
 
-### 사전학습 모델 준비
-
-FineGYM 데이터셋으로 사전학습된 모델을 [여기서](https://github.com/firework8/ProtoGCN/blob/ddf7f274f9f5d9e45a2fcfeb299bfb3fd7c2303d/data/README.md) 다운로드:
 ```bash
-mkdir -p checkpoints/finegym_j
-# best_top1_acc_epoch_141.pth 파일을 checkpoints/finegym_j/에 배치
+python protogcn/test.py <config> <checkpoint>
+python protogcn/tools/run_ensemble.py --score-dir scores/ --dataset-pkl data/dataset_diff.pkl
+python protogcn/tools/cluster_eval.py --pred scores/ensemble/final.pkl --split final_test
 ```
-
-### 학습 실행
-
-ProtoGCN 환경 활성화 필요
-```bash
-conda activate protogcn
-```
-
-#### 학습 실행
-
-```bash
-# Phase 1: Backbone freeze, Head만 학습 (20 epochs)
-python train_hydra.py experiment=phase1_freeze
-
-# Phase 2: 전체 파인튜닝 (80 epochs)
-python train_hydra.py experiment=phase2_finetune
-
-# 빠른 테스트 (2 epochs)
-python train_hydra.py experiment=debug
-```
-
-#### 설정 커스터마이징
-
-**하이퍼파라미터**:
-```bash
-python train_hydra.py experiment=phase1_freeze \
-    training.epochs=30 \
-    training.optimizer.lr=0.02 \
-    training.batch_size=8 \
-    model.num_prototype=100
-```
-
-## 🎮 데모 실행
-
-### 데모 서버 시작
-
-```bash
-cd demo/scripts
-bash run_demo.sh
-```
-
-또는 각 서버를 개별적으로 실행:
-
-```bash
-# Terminal 1: MediaPipe 키포인트 추출 서버
-conda activate mediapipe
-cd demo/extractor
-python api.py  # http://localhost:8001
 
 # Terminal 2: ProtoGCN 추론 서버
 conda activate protogcn
@@ -187,131 +101,12 @@ cd demo/app
 python main.py  # http://localhost:8000
 ```
 
-## 🔬 동작 품질 평가
+## References
 
-학습된 프로토타입과 입력 동작의 유사도를 계산하여 운동 품질을 정량적으로 평가합니다.
+- Liu et al., *Revealing Key Details to See Differences: A Novel Prototypical Perspective for Skeleton-based Action Recognition*, CVPR 2025 — [ProtoGCN](https://github.com/firework8/ProtoGCN)
+- [MediaPipe Pose](https://google.github.io/mediapipe/solutions/pose)
+- [Skelbumentations](https://github.com/MickaelCormier/Skelbumentations)
 
-### 프로토타입-클래스 매핑 생성
+## License
 
-학습된 모델에서 각 운동 클래스에 특화된 프로토타입을 식별합니다:
-
-```bash
-conda activate protogcn
-
-# 전체 데이터셋 분석하여 프로토타입-클래스 매핑 생성
-python scripts/analyze_prototype_class_mapping.py
-```
-
-**생성 결과** (`prototype_class_mapping.pkl`):
-- 전체 227개 샘플을 모델에 통과시켜 각 프로토타입의 클래스별 평균 응답 분석
-- 각 프로토타입을 가장 높은 응답을 보이는 클래스에 할당
-
-**프로토타입 분포** (총 50개):
-- Barbell biceps curl: 11개
-- Bench press: 7개
-- Lat pulldown: 7개
-- Push-up: 15개
-- Tricep pushdown: 10개
-
-### 평가 방법
-
-ProtoGCN의 Prototype Reconstruction Network (PRN)는 입력 동작을 학습된 프로토타입들의 조합으로 표현합니다:
-
-$$\mathbf{R} = \text{softmax}(\mathbf{X} \mathbf{W}_{\text{query}}^{\top}) \in \mathbb{R}^{V^2 \times n_{\text{proto}}}$$
-
-$$\mathbf{Z} = \mathbf{R} \cdot \mathbf{W}_{\text{memory}}$$
-
-여기서 **R**(Response Signal)은 입력이 각 프로토타입에 얼마나 부합하는지를 나타내는 확률 분포입니다.
-
-
-### 1. 전역 품질 점수 (Global Quality Score)
-
-**Top-K 프로토타입 집중도** 기반 평가:
-
-$$Q_{\text{global}} = \frac{1}{V^2} \sum_{i=1}^{V^2} \sum_{j=1}^{K} \text{TopK}(\mathbf{R}_i, K=5)_j$$
-
-여기서 $\mathbf{R}$은 예측된 운동 클래스의 프로토타입으로 필터링된 Response Signal입니다.
-
-1. 전체 Response Signal 추출: $\mathbf{R} \in \mathbb{R}^{V^2 \times 50}$
-2. 클래스별 필터링: $\mathbf{R}_{\text{class}} \in \mathbb{R}^{V^2 \times n_{\text{class}}}$ (예: Push-up의 경우 $n_{\text{class}}=15$)
-3. 필터링된 프로토타입 중 Top-K=5 선택하여 품질 점수 계산
-
-- **점수 범위**: 0.0 ~ 1.0
-- **해석**:
-  - 0.7~0.9: 우수 (해당 운동의 핵심 프로토타입에 강하게 집중)
-  - 0.4~0.7: 보통
-  - 0.4 이하: 불량 (해당 운동의 프로토타입 응답 분산, 비정상 동작)
-
-
-### 2. 관절별 품질 점수 (Joint-wise Quality Score)
-
-**관절별 최대 응답값** 기반 평가:
-
-1. 클래스별 필터링된 Response Signal을 관절별 행렬로 변환:
-   $\mathbf{R}_{\text{class}} \in \mathbb{R}^{V^2 \times n_{\text{class}}} \rightarrow \mathbf{R}_{\text{mat}} \in \mathbb{R}^{V \times V \times n_{\text{class}}}$
-   여기서 $\mathbf{R}_{\text{mat}}[i,j,k]$는 관절 $i$와 관절 $j$ 사이의 $k$번째 클래스 프로토타입 응답
-
-2. 각 관절이 다른 모든 관절과 맺는 관계를 평균:
-   $\bar{\mathbf{r}}_i = \frac{1}{V} \sum_{j=1}^{V} \mathbf{R}_{\text{mat}}[i,j,:] \in \mathbb{R}^{n_{\text{class}}}$
-
-3. 관절 $i$의 품질 점수 (해당 운동 클래스의 프로토타입 중 최대값):
-   $Q_{\text{joint}}(i) = \max_{k=1,\ldots,n_{\text{class}}} \bar{r}_{i,k}$
-
-- **점수 범위**: 0.0 ~ 1.0
-- **해석**:
-  - 0.5 이상: 해당 관절이 해당 운동의 학습된 패턴과 일치
-  - 0.3~0.5: 보통
-  - 0.3 이하: 해당 관절의 동작이 해당 운동 패턴에서 비정상
-
-**결과:**
-- 각 관절별 품질 점수 (20개 관절)
-- 평균/표준편차/최소/최대 관절 품질
-
-### 코드 실행
-#### 1. 프로토타입-클래스 매핑 생성
-
-학습된 모델에서 각 프로토타입이 어느 운동 클래스에 속하는지 분석:
-
-```bash
-conda activate protogcn
-
-# 전체 데이터셋 분석
-python scripts/analyze_prototype_class_mapping.py
-```
-
-**생성 결과:**
-- `prototype_class_mapping.pkl` 파일 생성
-- 각 프로토타입의 클래스 할당 정보 저장
-- 품질 평가 시 자동으로 로딩됨
-
-#### 2. 품질 평가 테스트
-
-학습된 모델로 운동 품질 평가 기능을 테스트:
-
-```bash
-conda activate protogcn
-
-# 기본 실행
-python scripts/test_quality_assessment.py
-```
-
-**출력 예시:**
-```
-Quality Assessment:
-  Global Quality Score: 0.0205
-  Level: Poor (red)
-  Used Prototypes: 7 prototypes for class 'lat pulldown'
-
-Joint-wise Quality:
-  Mean Joint Quality: 0.0208
-  Weak Joints (< 0.3): [0,1,2,...,19] (20 joints)
-  Top 3 Best Joints: [14, 5, 3]
-  Top 3 Worst Joints: [1, 2, 13]
-```
-
-
-## 📚 참고 문헌
-
-- ProtoGCN: [GitHub Repository](https://github.com/firework8/ProtoGCN.git)
-- MediaPipe Pose: [Google MediaPipe](https://google.github.io/mediapipe/solutions/pose)
-
+This project is for research purposes only.

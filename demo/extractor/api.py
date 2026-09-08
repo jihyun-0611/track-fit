@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import cv2
 import mediapipe as mp
 import numpy as np
-from utils import mediapipe_to_coco
+from keypoint_convert import mediapipe_to_coco20
 
 
 app = FastAPI(title="Keypoint Extract API")
@@ -33,7 +33,7 @@ async def extract_keypoints(file: UploadFile=File(...)):
     results = pose.process(frame_rgb)
 
     if results.pose_landmarks:
-        keypoints = mediapipe_to_coco(
+        keypoints = mediapipe_to_coco20(
             results.pose_landmarks,
             frame.shape[1],
             frame.shape[0]

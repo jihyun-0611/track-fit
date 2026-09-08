@@ -1,0 +1,54 @@
+defaults:
+  - model: protogcn
+  - data: j
+  - _self_
+  - optional experiment: null
+
+name: exercise
+work_dir: null
+
+seed: null
+deterministic: false
+compile: false
+
+validate: true
+test_last: false
+test_best: true
+auto_resume: true
+resume_from: null
+ckpt_dir: ${oc.env:WORK_DIR,}
+ckpt_file: finegym_j/best_top1_acc_epoch_141.pth
+load_from: ${ckpt_dir}/${ckpt_file}
+
+total_epochs: 100
+
+optimizer: 
+  lr: 0.012
+  momentum: 0.9
+  weight_decay: 0.0005
+  nesterov: true
+
+scheduler:
+  type: cosine_annealing                  # cosine_annealing | cosine_warm_restarts
+  min_lr: 0.000001
+  # T_0: 10
+  # T_mult: 10
+
+early_stopping:
+  patience: 10
+
+evaluation:
+  interval: 5
+  metrics: [top_k_accuracy, mean_class_accuracy]
+  topk: [1, 5]
+
+checkpoint_config: 
+  interval: 5
+
+log_config:
+  interval: 100
+
+wandb:
+  enabled: true
+  project: track-fit
+  name: null

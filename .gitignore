@@ -9,6 +9,11 @@ mmpose/
 mmdetection/
 .env
 work_dirs/
+*.ipynb
+!configs/data/
+results/
+scores/
+figures/
 
 # Hydra outputs
 outputs/
@@ -16,3 +21,6 @@ outputs/
 multirun/
 hydra_runs/
 hydra_multirun/
+*.pkl
+wandb/
+reports/

@@ -1,7 +1,7 @@
 import numpy as np
 
 
-MEDIAPIPE_TO_COCO = {
+MEDIAPIPE_TO_COCO_LEGACY = {
     0: 0, # nose
     2: 1, # left_eye
     5: 2, # right_eye
@@ -25,11 +25,11 @@ MEDIAPIPE_TO_COCO = {
     31: 19, # right_big_toe
 }
 
-def mediapipe_to_coco(mp_landmarks, width, height):
-    """MediaPipe format에서 COCO format으로 변환 (정규화된 좌표 유지)"""
+def mediapipe_to_coco_legacy(mp_landmarks, width, height):
+    """Preserve the previous normalized COCO20 conversion for comparisons."""
     keypoints = np.zeros((20, 3), dtype=np.float32)
 
-    for mp_idx, coco_idx in MEDIAPIPE_TO_COCO.items():
+    for mp_idx, coco_idx in MEDIAPIPE_TO_COCO_LEGACY.items():
         landmark = mp_landmarks.landmark[mp_idx]
         keypoints[coco_idx] = [
             landmark.x,  # 정규화된 좌표 (0-1) 유지
@@ -38,4 +38,3 @@ def mediapipe_to_coco(mp_landmarks, width, height):
         ]
 
     return keypoints
-

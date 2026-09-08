@@ -15,6 +15,8 @@ mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils
 
 
+NUM_COCO_KEYPOINTS = 17
+
 MEDIAPIPE_TO_COCO = {
     0: 0, # nose
     2: 1, # left_eye
@@ -33,10 +35,7 @@ MEDIAPIPE_TO_COCO = {
     26: 14, # right_knee
     27: 15, # left_ankle
     28: 16, # right_ankle
-    # COCO_NEW
-    19: 17, # left_big_toe
-    20: 18, # left_small_toe
-    31: 19, # right_big_toe
+
 }
 
 
@@ -63,12 +62,12 @@ class VideoReader(object):
 
 def mediapipe_to_coco(mp_landmarks, img_width, img_height):
     """
-    MediaPipe 33 keypoints를 COCO new Keypoints로 변환
+    MediaPipe 33 keypoints를 COCO 17 keypoints로 변환
     Returns:
-        np.array: shape (20, 3) - [x, y, confidence]
+        np.array: shape (17, 3) - [x, y, confidence]
     """
 
-    coco_kps = np.zeros((20, 3), dtype=np.float32)
+    coco_kps = np.zeros((NUM_COCO_KEYPOINTS, 3), dtype=np.float32)
 
     for mp_idx, coco_idx in MEDIAPIPE_TO_COCO.items():
         landmark = mp_landmarks.landmark[mp_idx]
@@ -93,7 +92,7 @@ def process_video(frame_provider, min_detection_confidence=0.5,
 
     with mp_pose.Pose(
         static_image_mode=False,
-        model_complexity=1,
+        model_complexity=2,
         smooth_landmarks=True,
         min_detection_confidence=min_detection_confidence,
         min_tracking_confidence=min_tracking_confidence
@@ -180,6 +179,17 @@ def main():
         help='Data directory path (default: $DATA_DIR from .env)'
     )
     parser.add_argument(
+        '--sub-dir',
+        type=str,
+        default=None
+    )
+    parser.add_argument(
+        '--csv-path',
+        type=str,
+        default=None,
+        help='Metadata CSV path (default: <data-dir>/meta.csv)'
+    )
+    parser.add_argument(
         '--min-detection-confidence',
         type=float,
         default=0.5,
@@ -191,6 +201,11 @@ def main():
         default=0.5,
         help='Minimum tracking confidence for MediaPipe (default: 0.5)'
     )
+    parser.add_argument(
+        '--save-json',
+        action='store_true',
+        help='Also save extracted keypoints as JSON files (default: disabled)'
+    )
     args = parser.parse_args()
 
     if not args.data_dir:
@@ -198,7 +213,8 @@ def main():
         return
 
     data_dir = Path(args.data_dir)
-    csv_path = data_dir / "filter_meta.csv"
+    sub_dir = Path(args.sub_dir)
+    csv_path = (data_dir / Path(args.csv_path)) if args.csv_path else data_dir / "meta.csv"
 
     if not csv_path.exists():
         print(f"Error: {csv_path} 파일을 찾을 수 없습니다.")
@@ -208,7 +224,7 @@ def main():
 
     video_paths = []
     for idx, row in df.iterrows():
-        path = os.path.join('sample_videos', row['exercise'], row['file_name'])
+        path = os.path.join(sub_dir, row['exercise'], row['file_name'])
         video_paths.append({
             'path':path,
             'exercise': row['exercise'],
@@ -216,13 +232,17 @@ def main():
         })
 
     print(f"Data directory: {data_dir}")
+    print(f"CSV path: {csv_path}")
     print(f"총 {len(video_paths)}개의 비디오 데이터")
 
 
-    json_output_dir = data_dir / "keypoints_mediapipe" / "json"
-    pickle_output_dir = data_dir / "keypoints_mediapipe" / "pickle"
+    pickle_output_dir = data_dir / "keypoints" / "pickle"
 
-    json_output_dir.mkdir(parents=True, exist_ok=True)
+    if args.save_json:
+        json_output_dir = data_dir / "keypoints" / "json"
+        json_output_dir.mkdir(parents=True, exist_ok=True)
+    else:
+        json_output_dir = None
     pickle_output_dir.mkdir(parents=True, exist_ok=True)
 
     total_videos = len(video_paths)
@@ -254,13 +274,14 @@ def main():
             filename = os.path.splitext(video_info['filename'])[0]
             exercise = video_info['exercise']
 
-            json_exercise_dir = json_output_dir / exercise
             pickle_exercise_dir = pickle_output_dir / exercise
-            json_exercise_dir.mkdir(parents=True, exist_ok=True)
             pickle_exercise_dir.mkdir(parents=True, exist_ok=True)
 
-            json_output_path = json_exercise_dir / f"{filename}.json"
-            save_to_json(result, str(json_output_path))
+            if args.save_json:
+                json_exercise_dir = json_output_dir / exercise
+                json_exercise_dir.mkdir(parents=True, exist_ok=True)
+                json_output_path = json_exercise_dir / f"{filename}.json"
+                save_to_json(result, str(json_output_path))
 
             pickle_output_path = pickle_exercise_dir / f"{filename}.pkl"
             save_to_pickle(result, str(pickle_output_path))
@@ -299,13 +320,11 @@ def main():
             print(f"  - {video}")
 
     print(f"\noutput directory:")
-    print(f"    JSON: {json_output_dir}")
+    if args.save_json:
+        print(f"    JSON: {json_output_dir}")
     print(f"    Pickle: {pickle_output_dir}")
     print("="*60)
 
 if __name__=='__main__':
     main()
-
-
-
 
