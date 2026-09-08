@@ -90,17 +90,6 @@ python protogcn/tools/run_ensemble.py --score-dir scores/ --dataset-pkl data/dat
 python protogcn/tools/cluster_eval.py --pred scores/ensemble/final.pkl --split final_test
 ```
 
-# Terminal 2: ProtoGCN 추론 서버
-conda activate protogcn
-cd demo/inferencer
-python api.py  # http://localhost:8002
-
-# Terminal 3: 웹 애플리케이션
-conda activate mediapipe
-cd demo/app
-python main.py  # http://localhost:8000
-```
-
 ## References
 
 - Liu et al., *Revealing Key Details to See Differences: A Novel Prototypical Perspective for Skeleton-based Action Recognition*, CVPR 2025 — [ProtoGCN](https://github.com/firework8/ProtoGCN)
