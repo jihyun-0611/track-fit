@@ -24,3 +24,6 @@ hydra_multirun/
 *.pkl
 wandb/
 reports/
+
+# experiment logs
+experiments_log/
